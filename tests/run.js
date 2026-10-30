@@ -1256,6 +1256,17 @@ for (const [key, mode, secondPage] of [
   check('banks: the number of banks is capped', m.banks.length <= 200, true);
 }
 
+{
+  // An untouched new bank goes back to the bank it was opened from.
+  const m = new Machine();
+  for (let i = 0; i < 3; i++) { m.switchBank(i); m.setStudioProgram(0, 'COMP', ['1']); }
+  m.switchBank(0);
+  send(m, '[MODE]6' + '1' + '[LEFT]');
+  check('banks: ◀ from bank 1 wraps to a new bank', [m.banks.length, m.bank].join(','), '4,3');
+  send(m, '[AC]');
+  check('banks: leaving returns to the bank it came from', [m.banks.length, m.bank].join(','), '3,0');
+}
+
 // ---- report -----------------------------------------------------------------
 console.log(`\n${pass} passed, ${fail} failed`);
 if (failures.length) {

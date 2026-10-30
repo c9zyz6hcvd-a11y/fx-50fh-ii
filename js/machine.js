@@ -1395,6 +1395,7 @@ export class Machine {
     if (i === this.banks.length) {
       if (this.banks.length >= MAX_BANKS) return;
       this.banks.push([null, null, null, null]);
+      this.returnBank = this.bank;   // where an untouched new bank goes back to
     }
     this.bank = i;
     // An empty bank at the end only exists while it is being looked at.
@@ -1417,7 +1418,7 @@ export class Machine {
     const last = this.banks.length - 1;
     if (last > 0 && this.bank === last && this.bankEmpty(last)) {
       this.banks.pop();
-      this.bank = last - 1;
+      this.bank = Math.min(this.returnBank ?? last - 1, last - 1);
     }
   }
 

@@ -5,7 +5,7 @@
 import { Program, PROGRAM_MEMORY, MAX_BANKS } from './program.js';
 import { bytesOf } from './tokens.js';
 import { formatProgramText, parseProgramText } from './program-codec.js';
-import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v1';
+import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v2';
 
 const STORAGE_KEY = 'fx50fhii.program-studio.v4';
 const LEGACY_STORAGE_KEYS = ['fx50fhii.program-studio.v3', 'fx50fhii.program-studio.v2'];
@@ -421,11 +421,14 @@ export function setupProgramStudio(machine, onMachineChange) {
     if (currentView === 'library') renderLibrary();
   }
 
-  /** Index of an empty bank to fill: the trailing one if it is unused, else a new one. */
+  /** Index of an empty bank to fill: the trailing one if it is unused, else a new one; -1 when full. */
   function freshBankIndex() {
     const last = machine.banks.length - 1;
-    return !machine.bankUsed(last) && !bankHasText(last) ? last : machine.banks.length;
+    if (!machine.bankUsed(last) && !bankHasText(last)) return last;
+    return machine.banks.length < MAX_BANKS ? machine.banks.length : -1;
   }
+
+  const banksFullMessage = `All ${MAX_BANKS} banks are in use. Delete a bank first.`;
 
   function showSlot(slot) {
     clearArmed = false;
@@ -576,6 +579,10 @@ export function setupProgramStudio(machine, onMachineChange) {
   }
 
   function installPack(pack, button, newBank = false) {
+    if (newBank && freshBankIndex() < 0) {
+      libraryStatus.textContent = banksFullMessage;
+      return;
+    }
     const occupied = !newBank && drafts.some(draft => draft?.source.trim());
     if (occupied && !requireReplacementConfirmation(`pack:${pack.id}`, button, 'Replace all four?')) return;
     rememberUndo();
@@ -607,6 +614,12 @@ export function setupProgramStudio(machine, onMachineChange) {
     const missing = PROGRAM_PACKS.filter(pack => !packBank(pack));
     if (!missing.length) {
       libraryStatus.textContent = 'Every pack is already in a bank.';
+      return;
+    }
+    const last = machine.banks.length - 1;
+    const room = MAX_BANKS - machine.banks.length + (!machine.bankUsed(last) && !bankHasText(last) ? 1 : 0);
+    if (room < missing.length) {
+      libraryStatus.textContent = `${missing.length} new banks are needed but only ${room} are free. Delete some banks first.`;
       return;
     }
     rememberUndo();
@@ -974,6 +987,7 @@ export function setupProgramStudio(machine, onMachineChange) {
       return showBank((machine.bank + (action === 'bank-next' ? 1 : -1) + count) % count);
     }
     if (action === 'bank-new') {
+      if (freshBankIndex() < 0) { feedback.textContent = banksFullMessage; return; }
       showBank(freshBankIndex());
       feedback.textContent = `Bank ${machine.bank + 1} is ready: four empty slots, 680 bytes.`;
       return;
@@ -1042,12 +1056,18 @@ export function setupProgramStudio(machine, onMachineChange) {
         if (currentView === 'library') renderLibrary();
         return;
       }
-      if (document.activeElement === source && !lastValid) { persist(); return; }
       // A slot the calculator changed since Studio last looked takes the
-      // calculator's version; any other draft is newer (maybe not storable
-      // yet) and stays as typed.
+      // calculator's version, except the slot being typed into while it still
+      // has an error; any other draft is newer (maybe not storable yet) and
+      // stays as typed.
+      const typing = document.activeElement === source && !lastValid;
       const now = machine.programSnapshot().slots.map(slot => JSON.stringify(slot));
-      for (let i = 0; i < drafts.length; i++) if (now[i] !== seen[i]) drafts[i] = deriveDraft(i);
+      for (let i = 0; i < drafts.length; i++) {
+        if (now[i] === seen[i] || (typing && i === selected)) continue;
+        drafts[i] = deriveDraft(i);
+        seen[i] = now[i];
+      }
+      if (typing) { renderSlots(); persist(); return; }
       showSlot(selected);
       persist();
       if (currentView === 'library') renderLibrary();
