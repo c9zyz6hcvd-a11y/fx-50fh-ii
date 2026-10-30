@@ -8,6 +8,8 @@ import { parse, evaluate, CalcError, C, r15, asZ, asNum, storeZ } from './expr.j
 import { K, textOf, bytesOf } from './tokens.js';
 
 export const PROGRAM_MEMORY = 680;
+// This edition: how many program banks (each a full 680-byte memory) are kept.
+export const MAX_BANKS = 200;
 
 export class Program {
   constructor(mode, tokens) {

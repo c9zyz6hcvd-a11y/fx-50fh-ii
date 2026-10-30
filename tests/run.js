@@ -13,7 +13,7 @@ import { KEYS, SHELL_W, SHELL_H } from '../js/keymap.js';
 import { glyphLayers, hasGlyph, lcdTextCells } from '../js/font.js';
 import { formatProgramText, parseProgramText } from '../js/program-codec.js';
 import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from '../js/program-catalog.generated.js';
-import { createProgramBackup, filterProgramCatalog, packBytes, parseProgramBackup } from '../js/studio.js';
+import { createBanksBackup, createProgramBackup, filterProgramCatalog, packBytes, parseAnyBackup, parseProgramBackup } from '../js/studio.js';
 
 // ---- key sequence DSL -------------------------------------------------------
 // digits and operators are literal; @ prefixes SHIFT, # prefixes ALPHA,
@@ -1141,6 +1141,119 @@ for (const [key, mode, secondPage] of [
   const m4 = new Machine();
   send(m4, '14/0*2=[LEFT]');
   check('AC-free error recovery keeps the entry', m4.view().line1.includes('14'), true);
+}
+
+// ---- program banks ------------------------------------------------------------
+{
+  // Bank 1 P1: ?→A : A×2.54   then ▶ in EDIT opens bank 2, where P1 is ×3.
+  const m = new Machine();
+  send(m, '[MODE]6' + '1' + '1' + '1');
+  send(m, '@3' + '1' + '@[RCL]#[NEG]' + '=' + '#[NEG]*2.54' + '[AC]');
+  check('banks: one bank reads exactly as the unit', m.view().line1, 'EDIT  RUN  DEL');
+  send(m, '1');
+  check('banks: single-bank EDIT picker is unchanged', m.view().line1, 'EDIT    Program');
+  check('banks: single-bank EDIT picker shows no arrows, as on the unit', [m.view().scrollLeft, m.view().scrollRight].join(','), 'false,false');
+  send(m, '[RIGHT]');
+  check('banks: ▶ past the last bank opens bank 2', m.view().line1, 'EDIT    Bank 2/2');
+  check('banks: a new bank has all 680 bytes free', m.view().line2, 'P----- 680');
+  send(m, '11' + '@3' + '1' + '@[RCL]#[NEG]' + '=' + '#[NEG]*3' + '[AC]');
+  check('banks: two banks exist', m.banks.length, 2);
+  send(m, '[MODE]1[PROG]');
+  check('banks: RUN names the current bank', m.view().line1, 'RUN     Bank 2/2');
+  send(m, '1' + '10=');
+  check('banks: bank 2 P1 runs its own program', shown(m), '30');
+  send(m, '[PROG][RIGHT]1' + '10=');
+  check('banks: ▶ wraps to bank 1 P1', shown(m), '25.4');
+  check('banks: each bank keeps its own 680 bytes', m.programBytes() < 680, true);
+}
+{
+  // An untouched trailing bank is dropped when the program screens close.
+  const m = new Machine();
+  send(m, '[MODE]6' + '1' + '1' + '1' + '1' + '[AC]');
+  send(m, '1[RIGHT]');
+  check('banks: empty trailing bank is shown while looked at', m.banks.length, 2);
+  send(m, '[AC]');
+  check('banks: empty trailing bank is dropped on AC', m.banks.length, 1);
+  check('banks: AC returns to the last real bank', m.bank, 0);
+}
+{
+  // RUN and DEL never create banks; DEL acts on the current bank only.
+  const m = new Machine();
+  m.setStudioProgram(0, 'COMP', ['1']);
+  m.switchBank(1);
+  m.setStudioProgram(0, 'COMP', ['2']);
+  m.switchBank(0);
+  send(m, '[MODE]6' + '2' + '[RIGHT][RIGHT][RIGHT]');
+  check('banks: RUN cycles existing banks only', [m.banks.length, m.bank].join(','), '2,1');
+  send(m, '[AC]3' + '1');
+  check('banks: DEL clears the slot in the current bank', m.banks[1][0], null);
+  check('banks: DEL leaves the other bank alone', m.banks[0][0].tokens[0].id, '1');
+}
+{
+  // CLR All resets the machine but only the program memory of the current bank.
+  const m = new Machine();
+  m.setStudioProgram(0, 'COMP', ['1']);
+  m.switchBank(1);
+  m.setStudioProgram(0, 'COMP', ['2']);
+  m.programs = [null, null, null, null];
+  check('banks: clearing programs touches the current bank only', m.banks[0][0].tokens[0].id, '1');
+}
+{
+  const m = new Machine();
+  m.setStudioProgram(0, 'COMP', ['1']);
+  m.switchBank(1);
+  m.setStudioProgram(0, 'COMP', ['2']);
+  m.switchBank(2);
+  m.setStudioProgram(0, 'COMP', ['3']);
+  m.deleteBank(1);
+  check('banks: delete removes the bank and keeps order',
+    m.banks.map((bank) => bank[0].tokens[0].id).join(','), '1,3');
+  check('banks: snapshot of another bank', m.programSnapshot(0).slots[0].tokens.join(','), '1');
+}
+{
+  const banks = [
+    { name: 'Algebra', machine: { version: 1, slots: [{ mode: 'COMP', tokens: ['1'] }, null, null, null] }, drafts: Array(4).fill({ mode: 'COMP', source: '' }) },
+    { name: 'Trig', machine: { version: 1, slots: [null, null, null, null] }, drafts: Array(4).fill({ mode: 'COMP', source: '' }) }
+  ];
+  const whole = parseAnyBackup(JSON.stringify(createBanksBackup(banks, '2026-10-31T00:00:00.000Z')));
+  check('banks: whole backup keeps every bank', whole.banks.map((bank) => bank.name).join(','), 'Algebra,Trig');
+  check('banks: whole backup is marked whole', whole.whole, true);
+  const machine = new Machine();
+  machine.setStudioProgram(0, 'COMP', ['1']);
+  const drafts = Array(4).fill({ mode: 'COMP', source: '' });
+  const single = parseAnyBackup(createProgramBackup(drafts, machine.programSnapshot()));
+  check('banks: a one-bank backup still imports', [single.whole, single.banks.length].join(','), 'false,1');
+}
+
+{
+  // MODE from a picker also drops an untouched new bank.
+  const m = new Machine();
+  m.setStudioProgram(0, 'COMP', ['1']);
+  send(m, '[MODE]6' + '1' + '[RIGHT]');
+  check('banks: EDIT ▶ is on the new bank', m.bank, 1);
+  send(m, '[MODE]1');
+  check('banks: leaving by MODE drops the empty bank', [m.banks.length, m.bank].join(','), '1,0');
+}
+{
+  // A bank Program Studio still holds draft text for is never dropped.
+  const m = new Machine();
+  m.setStudioProgram(0, 'COMP', ['1']);
+  m.switchBank(1);
+  m.keepBank = (i) => i === 1;
+  m.switchBank(0);
+  check('banks: a draft-only bank survives switching away', m.banks.length, 2);
+  m.switchBank(1);
+  send(m, '[ON]');
+  check('banks: a draft-only bank survives ON', [m.banks.length, m.bank].join(','), '2,1');
+}
+{
+  const m = new Machine();
+  for (let i = 0; i < 120; i++) { m.switchBank(i); m.setStudioProgram(0, 'COMP', ['1']); }
+  send(m, '[PROG]');
+  check('banks: three-digit bank numbers fit the 16-cell line', m.view().line1, 'RUN     Bank 120');
+  m.switchBank(m.banks.length);
+  for (let i = m.banks.length; i <= 300; i++) m.switchBank(i);
+  check('banks: the number of banks is capped', m.banks.length <= 200, true);
 }
 
 // ---- report -----------------------------------------------------------------

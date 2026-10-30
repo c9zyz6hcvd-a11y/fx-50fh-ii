@@ -7,7 +7,7 @@ import { formatReal, formatEng, formatFraction, formatDms, formatBase } from './
 import { CONSTANTS, CONST_BY_KEY, CONST_PAGES } from './consts.js';
 import { FORMULAS, formulaTitle } from './formulas.js';
 import { StatStore, REG_TYPES } from './stats.js';
-import { Program, PROGRAM_MEMORY } from './program.js';
+import { Program, PROGRAM_MEMORY, MAX_BANKS } from './program.js';
 import { lcdTextCells } from './font.js';
 
 registerConstants(CONSTANTS);
@@ -30,9 +30,17 @@ export class Machine {
     this.fvars = {};
     this.ans = C(0);
     this.stat = new StatStore();
-    this.programs = [null, null, null, null];
+    // Program banks: each bank is one whole fx-50FH II program memory (four
+    // areas sharing 680 bytes), so anything in a bank can be keyed into the
+    // real unit. `programs` always means the current bank.
+    this.banks = [[null, null, null, null]];
+    this.bank = 0;
+    this.keepBank = null;         // Program Studio: (i) => bank i holds unsaved drafts
     this.reset();
   }
+
+  get programs() { return this.banks[this.bank]; }
+  set programs(list) { this.banks[this.bank] = list; }
 
   reset() {
     this.shift = false;
@@ -102,6 +110,7 @@ export class Machine {
     if (id === 'ON') { this.pressOn(); return; }
     if (shift && id === 'AC') { this.off = true; return; }
 
+    const inPrograms = Boolean(this.prog);
     try {
       this.dispatch(id, shift, alpha);
     } catch (e) {
@@ -109,6 +118,9 @@ export class Machine {
       else if (e && e.mathError) this.raise('Math');
       else throw e;
     }
+    // However the program screens were left (AC, MODE, an error), an
+    // untouched new bank does not stay current.
+    if (inPrograms && !this.prog) this.leaveEmptyBank();
   }
 
   raise(kind) {
@@ -142,6 +154,7 @@ export class Machine {
     this.prog = null;
     this.message = null;
     this.clearEntry();
+    this.leaveEmptyBank();
     this.history = [];
   }
 
@@ -1255,7 +1268,15 @@ export class Machine {
       if (p.stage === 'edit') { this.saveProgram(); }
       this.prog = null;
       this.clearEntry();
+      this.leaveEmptyBank();
       if (this.mode === 'PRGM') this.openProgramRoot();
+      return;
+    }
+
+    // ◀ ▶ on a program picker switch banks.
+    if ((p.stage === 'editpick' || p.stage === 'runpick' || p.stage === 'delpick')
+        && (id === 'LEFT' || id === 'RIGHT')) {
+      this.stepBank(id === 'RIGHT' ? 1 : -1, p.stage === 'editpick');
       return;
     }
 
@@ -1362,12 +1383,68 @@ export class Machine {
     }
   }
 
+  // ---- program banks ---------------------------------------------------------
+  bankUsed(i) { return this.banks[i].some(Boolean); }
+
+  // Empty means no programs and no unsaved Program Studio drafts either.
+  bankEmpty(i) { return !this.bankUsed(i) && !this.keepBank?.(i); }
+
+  /** Make bank i current; i === banks.length opens a fresh empty bank. */
+  switchBank(i) {
+    if (!Number.isInteger(i) || i < 0 || i > this.banks.length) return;
+    if (i === this.banks.length) {
+      if (this.banks.length >= MAX_BANKS) return;
+      this.banks.push([null, null, null, null]);
+    }
+    this.bank = i;
+    // An empty bank at the end only exists while it is being looked at.
+    while (this.banks.length > 1 && this.bank < this.banks.length - 1
+           && this.bankEmpty(this.banks.length - 1)) this.banks.pop();
+  }
+
+  // EDIT may step past the last bank onto a fresh one; RUN and DEL only cycle
+  // through the banks that exist.
+  stepBank(dir, allowNew) {
+    const last = this.banks.length - 1;
+    const grow = allowNew && !this.bankEmpty(last) && this.banks.length < MAX_BANKS;
+    const count = this.banks.length + (grow ? 1 : 0);
+    if (count < 2) return;
+    this.switchBank((this.bank + dir + count) % count);
+  }
+
+  /** Leaving the program screens drops an untouched trailing bank. */
+  leaveEmptyBank() {
+    const last = this.banks.length - 1;
+    if (last > 0 && this.bank === last && this.bankEmpty(last)) {
+      this.banks.pop();
+      this.bank = last - 1;
+    }
+  }
+
+  /** Close any program screen (saving an edit) so the bank can change safely. */
+  closePrograms() {
+    if (!this.prog) return;
+    if (this.prog.stage === 'edit') this.saveProgram();
+    if (this.prog.stage === 'running') this.mode = this.prog.savedMode || this.mode;
+    this.prog = null;
+    this.clearEntry();
+    if (this.mode === 'PRGM') this.openProgramRoot();
+  }
+
+  deleteBank(i) {
+    if (i < 0 || i >= this.banks.length) return;
+    this.closePrograms();
+    this.banks.splice(i, 1);
+    if (!this.banks.length) this.banks.push([null, null, null, null]);
+    this.bank = Math.min(this.bank > i ? this.bank - 1 : this.bank, this.banks.length - 1);
+  }
+
   /** Serializable program state. An active editor is included on every autosave. */
-  programSnapshot() {
-    const slots = this.programs.map((program) => program
+  programSnapshot(bank = this.bank) {
+    const slots = this.banks[bank].map((program) => program
       ? { mode: program.mode, tokens: program.tokens.map((token) => token.id) }
       : null);
-    if (this.prog?.stage === 'edit') {
+    if (bank === this.bank && this.prog?.stage === 'edit') {
       const stored = this.programs[this.prog.slot];
       slots[this.prog.slot] = {
         mode: stored?.mode || 'COMP',
@@ -1676,13 +1753,25 @@ export class Machine {
     const p = this.prog;
     const used = this.programs.map((x, i) => (x ? String(i + 1) : '-')).join('');
     const free = String(PROGRAM_MEMORY - this.programBytes());
+    // With one bank the pickers read exactly as on the unit; with more, the
+    // upper line names the bank and the scroll arrows say ◀ ▶ switch it.
+    const banked = this.banks.length > 1;
+    const bankLabel = () => {
+      const full = `Bank ${this.bank + 1}/${this.banks.length}`;
+      return full.length <= 10 ? full : `Bank ${this.bank + 1}`;
+    };
+    const picker = (verb, plain) => ({
+      line1: banked ? verb.padEnd(6) + bankLabel().padStart(10) : plain,
+      scrollLeft: banked,
+      scrollRight: banked
+    });
     if (p.stage === 'root') return { line1: 'EDIT  RUN  DEL', line2: '1     2    3' };
     if (p.stage === 'editpick') {
-      return { line1: 'EDIT    Program', line2: `P-${used} ${free.padStart(3, ' ')}` };
+      return { ...picker('EDIT', 'EDIT    Program'), line2: `P-${used} ${free.padStart(3, ' ')}` };
     }
-    if (p.stage === 'runpick') return { line1: 'RUN     Program', line2: 'P-' + used };
+    if (p.stage === 'runpick') return { ...picker('RUN', 'RUN     Program'), line2: 'P-' + used };
     if (p.stage === 'delpick') {
-      return { line1: 'DELETE  Program', line2: `P-${used} ${free.padStart(3, ' ')}` };
+      return { ...picker('DEL', 'DELETE  Program'), line2: `P-${used} ${free.padStart(3, ' ')}` };
     }
     if (p.stage === 'newmode') {
       return p.page === 0

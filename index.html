@@ -3,9 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>CASIO fx-50FH II — web</title>
+<title>fx-50FH II</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="fx-50FH II">
+<meta name="theme-color" content="#17181b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta name="description" content="A 1:1 working web recreation of the CASIO fx-50FH II (H.K.E.A.A. approved) programmable scientific calculator: all six modes, 23 built-in formulas, 40 scientific constants, base-n, statistics and the BASIC-like program mode.">
-<link rel="stylesheet" href="css/style.css?v=studio-v9">
+<link rel="stylesheet" href="css/style.css?v=bank-v1">
 </head>
 <body>
 
@@ -34,13 +41,13 @@
     <section id="studio" hidden aria-labelledby="studio-title">
       <header class="studio-head">
         <div class="studio-head-copy">
-          <p class="studio-kicker">PROGRAM WORKBENCH · 680 BYTE MEMORY</p>
+          <p class="studio-kicker">PROGRAM WORKBENCH · UNLIMITED BANKS</p>
           <h1 id="studio-title">Program Studio</h1>
           <p class="studio-intro">Write normally or install from the library. Every change is saved on this device.</p>
         </div>
         <div class="studio-head-meta">
           <span id="studio-save-state" class="save-state" role="status">saved</span>
-          <span class="studio-badge">680 B shared · 4 slots</span>
+          <span class="studio-badge">4 slots · 680 B per bank</span>
         </div>
       </header>
 
@@ -51,7 +58,7 @@
 
       <div id="studio-editor-view" role="tabpanel" aria-labelledby="editor-tab">
         <div class="studio-management">
-          <span>Four on-device slots</span>
+          <span>Every bank is saved on this device</span>
           <div>
             <button type="button" data-studio-action="export-backup">Export all</button>
             <button type="button" data-studio-action="import-backup">Import backup</button>
@@ -60,6 +67,18 @@
           </div>
         </div>
 
+        <div class="bank-bar" aria-label="Program banks">
+          <button type="button" class="bank-step" data-studio-action="bank-prev" aria-label="Previous bank">◀</button>
+          <div class="bank-label">
+            <b id="bank-number">Bank 1 of 1</b>
+            <input id="bank-name" type="text" maxlength="40" placeholder="Name this bank" autocomplete="off" aria-label="Bank name">
+          </div>
+          <button type="button" class="bank-step" data-studio-action="bank-next" aria-label="Next bank">▶</button>
+          <div class="bank-actions">
+            <button type="button" data-studio-action="bank-new">+ New bank</button>
+            <button type="button" class="danger-link" data-studio-action="bank-delete" hidden>Delete bank</button>
+          </div>
+        </div>
         <div id="program-slots" class="program-slots" role="tablist" aria-label="Program slots">
           <button id="slot-tab-1" type="button" role="tab" data-slot="0" aria-selected="true" aria-controls="program-editor-panel" tabindex="0"><b>P1</b><span>empty</span></button>
           <button id="slot-tab-2" type="button" role="tab" data-slot="1" aria-selected="false" aria-controls="program-editor-panel" tabindex="-1"><b>P2</b><span>empty</span></button>
@@ -106,15 +125,15 @@
           <div id="command-palette"></div>
         </div>
 
-        <p class="studio-footnote"><b>Recovery:</b> calculator-key edits and Studio edits are autosaved. Export all four slots before clearing browser data.</p>
+        <p class="studio-footnote"><b>Banks:</b> each bank is one full calculator memory — 4 slots, 680 bytes — so it can be keyed into a real fx-50FH II. On the calculator, press <b>Prog</b>, then <b>◀ ▶</b> to change bank. <b>Recovery:</b> every edit is autosaved; use Export all now and then as a backup.</p>
       </div>
 
       <section id="program-library-view" class="program-library" role="tabpanel" aria-labelledby="library-tab" hidden>
         <header class="library-head">
           <div>
-            <p class="library-eyebrow">12 PROGRAMS · 6 FOUR-SLOT PACKS</p>
+            <p class="library-eyebrow">12 PROGRAMS · 6 FOUR-SLOT PACKS · ANY NUMBER OF BANKS</p>
             <h2>HKDSE Program Library</h2>
-            <p>Choose deliberately. Nothing installs or replaces a slot until you confirm it.</p>
+            <p>Install into the current bank, or give each pack a bank of its own. Nothing is replaced until you confirm it.</p>
             <a class="library-pdf-link" href="output/pdf/fx-50fh-ii-s5-program-library.pdf" download>Download curated PDF</a>
           </div>
           <div class="library-memory" aria-label="Program memory usage">
@@ -139,7 +158,7 @@
         <section class="pack-shelf" aria-labelledby="pack-title">
           <div class="drawer-heading">
             <h2 id="pack-title">Four-slot packs</h2>
-            <span>memory-safe combinations</span>
+            <button type="button" class="load-all-packs" data-library-action="install-all-packs">Load every pack · one bank each</button>
           </div>
           <div id="program-packs" class="program-packs"></div>
         </section>
@@ -177,10 +196,11 @@
       <li><b>FMLA</b> → type a two-digit formula number 01–23, or scroll with
         ▼ ▲, then EXE. <b>SHIFT FMLA</b> (LOOK) shows the formula itself.</li>
       <li><b>Prog</b> → run a stored program. In PRGM mode it opens
-        EDIT / RUN / DEL.</li>
+        EDIT / RUN / DEL. On any program list, <b>◀ ▶</b> change bank; in EDIT,
+        ▶ past the last bank starts a new one.</li>
       <li><b>Program Studio</b> → write or paste normal program text, insert
-        commands, see shared byte usage, and run or continue editing with the calculator keys.
-        All four slots and active drafts are autosaved on this device. The <b>HKDSE Library</b>
+        commands, see byte usage per bank, and run or continue editing with the calculator keys.
+        Every bank and active draft is autosaved on this device. The <b>HKDSE Library</b>
         provides the seven S5 programs plus five complex solvers (including a combined simultaneous + line-circle one), and six four-slot packs, with overwrite confirmation,
         Undo, and versioned export/import backup.</li>
       <li>In BASE mode: x² = DEC, ^ = HEX, log = BIN, ln = OCT, and x⁻¹ opens
@@ -201,13 +221,14 @@
     <p class="fine">
       Behaviour follows the published fx-50F PLUS / fx-50FH II user's guide:
       the same six modes, 10+2 digit display, 15-digit internal precision,
-      99-byte input line, 680 bytes of program memory across four areas,
+      99-byte input line, 680 bytes of program memory across four areas
+      (per bank in this edition, which adds any number of banks),
       23 built-in formulas and 40 CODATA-2000 constants. The shell is the
       generated high-resolution reconstruction; the display and every key are live.
     </p>
   </section>
 </main>
 
-<script type="module" src="js/main.js?v=studio-v9"></script>
+<script type="module" src="js/main.js?v=bank-v1"></script>
 </body>
 </html>

@@ -2,10 +2,10 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=studio-v9';
-import { LCD, GLASS } from './lcd.js?v=studio-v9';
-import { Machine } from './machine.js?v=studio-v9';
-import { setupProgramStudio } from './studio.js?v=studio-v9';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v1';
+import { LCD, GLASS } from './lcd.js?v=bank-v1';
+import { Machine } from './machine.js?v=bank-v1';
+import { setupProgramStudio } from './studio.js?v=bank-v1';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -83,6 +83,7 @@ function tap(id) {
     b.classList.add('down');
     setTimeout(() => b.classList.remove('down'), 90);
   }
+  studioController.beforeKey();
   machine.press(id);
   studioController.syncFromMachine();
   blink = true;
@@ -190,3 +191,11 @@ helpToggle.addEventListener('click', async () => {
 });
 
 window.fx = machine;   // handy for poking at state from the console
+
+// ---- offline app ------------------------------------------------------------
+// Once opened over HTTPS (or added to the iPhone home screen) the calculator
+// keeps working with no network; saved programs are asked to be kept.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+navigator.storage?.persist?.().catch(() => {});

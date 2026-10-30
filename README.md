@@ -5,6 +5,20 @@ scientific calculator that the HKEAA approves for the HKDSE.
 
 **[Open the calculator →](https://throwingogo-hub.github.io/fx-50fh-ii/)**
 
+## This edition: program banks and iPhone
+
+This fork adds **program banks**. A bank is one whole fx-50FH II program
+memory — four areas sharing 680 bytes — and there can be any number of them,
+so every bank can still be keyed into the real calculator. On the calculator,
+`Prog` (or `MODE 6`, then EDIT/RUN/DEL) shows the current bank; `◀ ▶` switch
+banks, and in EDIT `▶` past the last bank starts a new one. Program Studio
+has a bank bar, can load each library pack into a bank of its own, and backs
+up every bank at once (older one-bank backups still import).
+
+It is also an installable web app: on an iPhone, open the page in Safari,
+then Share → Add to Home Screen. It opens full screen, sized to the phone,
+and works offline after the first visit (`sw.js`, `manifest.webmanifest`).
+
 Program Studio includes a searchable, memory-aware **HKDSE Program Library**:
 the seven programs from the printed S5 list plus five complex-number solvers
 (simultaneous, line-circle, a combined one, quadratic and two-curve), six

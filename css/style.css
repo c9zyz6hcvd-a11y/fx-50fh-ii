@@ -33,6 +33,11 @@ html, body {
   html, body { background-color: #17181b; color: #d8d9dd; }
 }
 
+/* Home-screen app: the status bar is translucent, so the page stays dark. */
+@media (display-mode: standalone) {
+  html, body { background-color: #17181b; color: #d8d9dd; }
+}
+
 main {
   min-height: 100vh;
   display: flex;
@@ -482,6 +487,52 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
 .program-slots button[aria-selected="true"] b { color: #23584a; }
 .program-slots button[aria-selected="true"] span { color: #3d6a5c; }
 
+/* ---- program banks --------------------------------------------------------- */
+.bank-bar {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.bank-step,
+.bank-actions button,
+.load-all-packs {
+  min-height: 38px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: 9px;
+  background: var(--st-card);
+  color: #333c37;
+  font: 700 12px/1 "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  cursor: pointer;
+}
+.bank-step { padding: 0; font-size: 13px; }
+.bank-step:hover:not(:disabled),
+.bank-actions button:hover,
+.load-all-packs:hover { border-color: var(--st-accent); color: var(--st-accent); }
+.bank-label { min-width: 0; }
+.bank-label b {
+  display: block;
+  color: var(--st-ink);
+  font: 800 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.bank-label input {
+  width: 100%;
+  margin-top: 3px;
+  padding: 4px 6px;
+  border: 1px solid var(--st-line);
+  border-radius: 7px;
+  background: var(--st-card);
+  color: var(--st-ink);
+  font: 500 14px/1.2 "Avenir Next", Avenir, sans-serif;
+}
+.bank-actions { display: flex; gap: 6px; }
+.bank-actions button { padding: 0 11px; }
+.bank-actions .danger-link { border-color: transparent; background: transparent; color: #a4492a; }
+.load-all-packs { min-height: 30px; padding: 0 11px; font-size: 11px; }
+
 /* ---- editor ---------------------------------------------------------------- */
 .studio-editor-card {
   padding: 16px;
@@ -794,7 +845,8 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   font-style: normal;
 }
-.pack-card footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
+.pack-card footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
+.pack-card footer span { margin-right: auto; }
 .pack-card footer span { color: #7a4b35; font: 800 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .pack-card button { min-height: 34px; padding: 0 12px; }
 .pack-card button.confirming,
@@ -901,6 +953,26 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
 
 @media (max-width: 520px) {
   main { padding-inline: 10px; }
+  /* Phone: the calculator body fills the screen between the safe areas. The
+     image has transparent margins (body x 55-822, y 60-1690 of 881x1785), so
+     the stage is sized by the body and the margins are cropped away. */
+  html, body { overflow-x: clip; }
+  main {
+    padding: calc(env(safe-area-inset-top) + 4px) 4px calc(env(safe-area-inset-bottom) + 28px);
+    gap: 14px;
+  }
+  #stage {
+    --w: min(calc((100vw - 8px) / .8706), calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px) / 1.8503));
+    --w: min(calc((100vw - 8px) / .8706), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px) / 1.8503));
+    flex: none;
+    width: var(--w);
+    margin: calc(var(--w) * -.0681) 0 calc(var(--w) * -.1078);
+  }
+  #shell { -webkit-touch-callout: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  .key-hint { bottom: calc(env(safe-area-inset-bottom) + 14px); }
+  .bank-bar { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+  .bank-actions { grid-column: 1 / -1; }
+  .bank-actions button { flex: 1; }
   #studio { padding: 22px 16px 18px; border-radius: 14px; }
   .studio-head { gap: 10px; }
   .studio-head h1 { font-size: 25px; }
