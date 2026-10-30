@@ -5,7 +5,7 @@
 import { Program, PROGRAM_MEMORY, MAX_BANKS } from './program.js';
 import { bytesOf } from './tokens.js';
 import { formatProgramText, parseProgramText } from './program-codec.js';
-import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v2';
+import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v4';
 
 const STORAGE_KEY = 'fx50fhii.program-studio.v4';
 const LEGACY_STORAGE_KEYS = ['fx50fhii.program-studio.v3', 'fx50fhii.program-studio.v2'];
@@ -148,6 +148,7 @@ export function setupProgramStudio(machine, onMachineChange) {
   let bankDrafts = [[null, null, null, null]];
   let bankNames = [''];
   let drafts = bankDrafts[0];
+  let preloaded = false;         // the library is loaded once, on first open
   let deleteBankArmed = false;
   let deleteBankTimer = 0;
   let seen = [];                 // the current bank's slots as last synced from the calculator
@@ -301,6 +302,7 @@ export function setupProgramStudio(machine, onMachineChange) {
       drafts = bankDrafts[machine.bank];
       selected = clampSlot(saved.selected);
       if (saved.version === STORAGE_VERSION && Array.isArray(saved.undoState?.banks)) undoState = saved.undoState;
+      preloaded = saved.version === STORAGE_VERSION && Boolean(saved.preloaded);
     } catch {
       // Corrupt or blocked storage never prevents the calculator from loading.
     }
@@ -315,6 +317,7 @@ export function setupProgramStudio(machine, onMachineChange) {
         selected,
         banks,
         undoState,
+        preloaded,
         updatedAt: Date.now()
       }));
       saveState.textContent = 'saved';
@@ -868,7 +871,42 @@ export function setupProgramStudio(machine, onMachineChange) {
     if (currentView === 'library') renderLibrary();
   }
 
+  // First open: the whole library, in catalog order, a bank at a time. A new
+  // bank starts when four slots or 680 bytes are used, so the numbering stays
+  // P1–P4 in bank 1 and onwards.
+  function preloadLibrary() {
+    const groups = [];
+    for (const program of PROGRAMS) {
+      const group = groups[groups.length - 1];
+      const bytes = group ? group.reduce((sum, p) => sum + p.bytes, 0) : 0;
+      if (!group || group.length === SLOT_COUNT || bytes + program.bytes > PROGRAM_MEMORY) groups.push([program]);
+      else group.push(program);
+    }
+    try {
+      machine.banks = groups.map(() => [null, null, null, null]);
+      bankDrafts = groups.map(() => [null, null, null, null]);
+      bankNames = groups.map(group => group.length > 1 ? `${group[0].id}–${group[group.length - 1].id}` : group[0].id);
+      groups.forEach((group, bank) => {
+        machine.bank = bank;
+        group.forEach((program, slot) => {
+          machine.setStudioProgram(slot, program.mode, parseProgramText(program.source, program.mode).tokenIds);
+          bankDrafts[bank][slot] = { mode: program.mode, source: program.source };
+        });
+      });
+    } catch {
+      machine.banks = [[null, null, null, null]];
+      bankDrafts = [[null, null, null, null]];
+      bankNames = [''];
+    }
+    machine.bank = 0;
+    drafts = bankDrafts[0];
+  }
+
   loadStorage();
+  if (!preloaded) {
+    if (machine.banks.every((_, bank) => machine.bankEmpty(bank))) preloadLibrary();
+    preloaded = true;
+  }
   syncBanks();
   buildPalette();
   showSlot(selected);
@@ -1033,6 +1071,10 @@ export function setupProgramStudio(machine, onMachineChange) {
       onMachineChange();
       renderLibrary();
     }
+  });
+
+  document.getElementById('studio-close').addEventListener('click', () => {
+    if (!studio.hidden) toggle.click();
   });
 
   window.addEventListener('pagehide', persist);

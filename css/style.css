@@ -995,6 +995,39 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   .program-packs { grid-template-columns: 1fr; }
 }
 
+.studio-close { display: none; }
+
+/* Phone: the calculator alone. Program Studio opens over it (hold the solar
+   panel) and closes with Done. */
+@media (max-width: 520px) {
+  html, body { overflow: hidden; overscroll-behavior: none; }
+  main { padding-bottom: env(safe-area-inset-bottom); }
+  #mode-bar, #utility-nav { display: none; }
+  #studio {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px);
+  }
+  .studio-close {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 16px;
+    border: 1px solid var(--st-accent);
+    border-radius: 999px;
+    background: var(--st-accent);
+    color: #fff;
+    font: 700 14px/1 "Avenir Next", Avenir, sans-serif;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   #studio, #studio.studio-leave, #studio-editor-view, .program-library { animation: none; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }

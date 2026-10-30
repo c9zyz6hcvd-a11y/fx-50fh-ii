@@ -2,10 +2,10 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v2';
-import { LCD, GLASS } from './lcd.js?v=bank-v2';
-import { Machine } from './machine.js?v=bank-v2';
-import { setupProgramStudio } from './studio.js?v=bank-v2';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v4';
+import { LCD, GLASS } from './lcd.js?v=bank-v4';
+import { Machine } from './machine.js?v=bank-v4';
+import { setupProgramStudio } from './studio.js?v=bank-v4';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -191,6 +191,41 @@ helpToggle.addEventListener('click', async () => {
 });
 
 window.fx = machine;   // handy for poking at state from the console
+
+// ---- Program Studio from the faceplate ----------------------------------------
+// On a phone the page is the calculator alone. Holding the faceplate above the
+// display (brand and solar panel) for 0.6 s opens Program Studio.
+const studioPanel = document.getElementById('studio');
+const studioToggle = document.getElementById('studio-toggle');
+let holdTimer = 0;
+let holdStart = null;
+const cancelHold = () => { clearTimeout(holdTimer); holdStart = null; };
+shell.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.key')) return;
+  const box = shell.getBoundingClientRect();
+  if (e.clientY - box.top > box.height * GLASS.y / SHELL_H) return;
+  cancelHold();
+  holdStart = { x: e.clientX, y: e.clientY };
+  holdTimer = setTimeout(() => {
+    holdStart = null;
+    if (studioPanel.hidden) studioToggle.click();
+  }, 600);
+});
+shell.addEventListener('pointerup', cancelHold);
+shell.addEventListener('pointercancel', cancelHold);
+shell.addEventListener('pointermove', (e) => {
+  if (holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 12) cancelHold();
+});
+
+// Say once, on a phone, where Program Studio went.
+try {
+  if (matchMedia('(max-width: 520px)').matches && !localStorage.getItem('fx50fhii.hint.studio')) {
+    localStorage.setItem('fx50fhii.hint.studio', '1');
+    setTimeout(() => showHint('Hold the solar panel to open Program Studio.'), 800);
+  }
+} catch {
+  // Blocked storage only means the hint may show again.
+}
 
 // ---- offline app ------------------------------------------------------------
 // Once opened over HTTPS (or added to the iPhone home screen) the calculator
