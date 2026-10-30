@@ -17,12 +17,12 @@ const lcd = new LCD(canvas);
 
 // A key the current mode refuses explains itself instead of doing nothing.
 let hintTimer = null;
-function showHint(text) {
+function showHint(text, pointAtMode = true) {
   hintEl.textContent = text;
   hintEl.classList.add('show');
   clearTimeout(hintTimer);
   hintTimer = setTimeout(() => hintEl.classList.remove('show'), 5600);
-  const modeKey = buttons.get('MODE');
+  const modeKey = pointAtMode && buttons.get('MODE');
   if (modeKey) {
     modeKey.classList.add('attention');
     setTimeout(() => modeKey.classList.remove('attention'), 1500);
@@ -197,11 +197,12 @@ window.fx = machine;   // handy for poking at state from the console
 // display (brand and solar panel) for 0.6 s opens Program Studio.
 const studioPanel = document.getElementById('studio');
 const studioToggle = document.getElementById('studio-toggle');
+const phone = matchMedia('(max-width: 520px)');
 let holdTimer = 0;
 let holdStart = null;
 const cancelHold = () => { clearTimeout(holdTimer); holdStart = null; };
 shell.addEventListener('pointerdown', (e) => {
-  if (e.target.closest('.key')) return;
+  if (!phone.matches || e.target.closest('.key')) return;
   const box = shell.getBoundingClientRect();
   if (e.clientY - box.top > box.height * GLASS.y / SHELL_H) return;
   cancelHold();
@@ -211,17 +212,17 @@ shell.addEventListener('pointerdown', (e) => {
     if (studioPanel.hidden) studioToggle.click();
   }, 600);
 });
-shell.addEventListener('pointerup', cancelHold);
-shell.addEventListener('pointercancel', cancelHold);
+window.addEventListener('pointerup', cancelHold);
+window.addEventListener('pointercancel', cancelHold);
 shell.addEventListener('pointermove', (e) => {
   if (holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 12) cancelHold();
 });
 
 // Say once, on a phone, where Program Studio went.
 try {
-  if (matchMedia('(max-width: 520px)').matches && !localStorage.getItem('fx50fhii.hint.studio')) {
+  if (phone.matches && !localStorage.getItem('fx50fhii.hint.studio')) {
     localStorage.setItem('fx50fhii.hint.studio', '1');
-    setTimeout(() => showHint('Hold the solar panel to open Program Studio.'), 800);
+    setTimeout(() => showHint('Hold the solar panel to open Program Studio.', false), 800);
   }
 } catch {
   // Blocked storage only means the hint may show again.

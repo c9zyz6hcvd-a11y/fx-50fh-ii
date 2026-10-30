@@ -897,15 +897,20 @@ export function setupProgramStudio(machine, onMachineChange) {
       machine.banks = [[null, null, null, null]];
       bankDrafts = [[null, null, null, null]];
       bankNames = [''];
+      machine.bank = 0;
+      drafts = bankDrafts[0];
+      return false;
     }
     machine.bank = 0;
     drafts = bankDrafts[0];
+    return true;
   }
 
   loadStorage();
+  // A failed preload is tried again on the next open; it only ever runs
+  // while every bank is empty, so nothing can be overwritten.
   if (!preloaded) {
-    if (machine.banks.every((_, bank) => machine.bankEmpty(bank))) preloadLibrary();
-    preloaded = true;
+    preloaded = machine.banks.every((_, bank) => machine.bankEmpty(bank)) ? preloadLibrary() : true;
   }
   syncBanks();
   buildPalette();
