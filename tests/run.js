@@ -1267,6 +1267,20 @@ for (const [key, mode, secondPage] of [
   check('banks: leaving returns to the bank it came from', [m.banks.length, m.bank].join(','), '3,0');
 }
 
+{
+  // The way back is forgotten once the student moves on from the new bank.
+  const m = new Machine();
+  for (let i = 0; i < 4; i++) { m.switchBank(i); m.setStudioProgram(0, 'COMP', ['1']); }
+  m.switchBank(0);
+  m.switchBank(4);
+  m.setStudioProgram(0, 'COMP', ['9']);
+  m.switchBank(3);
+  m.switchBank(4);
+  m.clearStudioProgram(0);
+  send(m, '[MODE]6' + '1' + '[AC]');
+  check('banks: an emptied bank falls back to the previous bank, not an old one', [m.banks.length, m.bank].join(','), '4,3');
+}
+
 // ---- report -----------------------------------------------------------------
 console.log(`\n${pass} passed, ${fail} failed`);
 if (failures.length) {

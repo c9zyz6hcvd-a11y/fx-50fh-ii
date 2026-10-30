@@ -1396,6 +1396,8 @@ export class Machine {
       if (this.banks.length >= MAX_BANKS) return;
       this.banks.push([null, null, null, null]);
       this.returnBank = this.bank;   // where an untouched new bank goes back to
+    } else {
+      this.returnBank = null;        // only valid straight after opening a new bank
     }
     this.bank = i;
     // An empty bank at the end only exists while it is being looked at.
@@ -1436,6 +1438,7 @@ export class Machine {
     if (i < 0 || i >= this.banks.length) return;
     this.closePrograms();
     this.banks.splice(i, 1);
+    this.returnBank = null;
     if (!this.banks.length) this.banks.push([null, null, null, null]);
     this.bank = Math.min(this.bank > i ? this.bank - 1 : this.bank, this.banks.length - 1);
   }
