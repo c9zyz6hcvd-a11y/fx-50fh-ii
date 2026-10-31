@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v16';
-import { LCD, GLASS } from './lcd.js?v=bank-v16';
-import { Machine } from './machine.js?v=bank-v16';
-import { parseProgramText } from './program-codec.js?v=bank-v16';
-import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v16';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v17';
+import { LCD, GLASS } from './lcd.js?v=bank-v17';
+import { Machine } from './machine.js?v=bank-v17';
+import { parseProgramText } from './program-codec.js?v=bank-v17';
+import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v17';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -116,6 +116,10 @@ function tap(id) {
     setTimeout(() => b.classList.remove('down'), 90);
   }
   machine.press(id);
+  // On a phone, Prog's P1-P4 screen points to the full list.
+  if (id === 'PROG' && machine.prog?.stage === 'libpick' && phone.matches) {
+    showHint('Hold the solar panel to see all programs.', false);
+  }
   blink = true;
   lastBlink = performance.now();
   dirty = true;
