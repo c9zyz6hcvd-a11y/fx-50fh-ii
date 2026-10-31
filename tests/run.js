@@ -196,10 +196,11 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
     key.w * mobileScale >= 24 && key.h * mobileScale >= 24), true);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
-  check('Program Studio exposes Editor and Library tabpanels',
-    html.includes('id="studio-editor-view"') && html.includes('id="program-library-view"'), true);
-  check('Program Studio exposes versioned backup controls',
-    html.includes('data-studio-action="export-backup"') && html.includes('data-studio-action="import-backup"'), true);
+  check('the page has the Programs list and no Program Studio',
+    html.includes('id="program-list"') && html.includes('id="programs-open"') && !html.includes('id="studio"'), true);
+  check('SHIFT 9 3 has its face ready, and the offline cache carries it',
+    html.includes('src="assets/prank-face.webp"')
+      && readFileSync(new URL('../sw.js', import.meta.url), 'utf8').includes("'assets/prank-face.webp'"), true);
   check('mobile column layout cancels the desktop Studio flex basis',
     /@media \(max-width: 820px\)[\s\S]*?#studio \{ flex: none; margin-top: 0; width: 100%; max-width: 720px; \}/.test(css), true);
 }
@@ -435,14 +436,10 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
   // user's guide: every CLR choice waits for EXE; AC instead leaves things as they were
   const m = new Machine();
   m.setStudioProgram(0, 'COMP', ['pIn', 'pAsg', 'varA']);
-  send(m, '@[N9]3');
-  check('CLR All asks before resetting', m.view().line1, 'Reset All?');
-  send(m, '1 2 [LEFT][DEL]');
-  check('CLR All ignores other keys while it asks', Boolean(m.programs[0]) && m.view().line1, 'Reset All?');
+  send(m, '7@[N9]3');
+  check('SHIFT 9 3 resets nothing and asks the page for its surprise',
+    [m.prank, Boolean(m.programs[0]), m.view().line1].join('|'), '1|true|7');
   send(m, '[AC]');
-  check('AC at Reset All? keeps the programs', Boolean(m.programs[0]), true);
-  send(m, '@[N9]3=');
-  check('EXE at Reset All? clears the program memory', m.programs.every((p) => !p), true);
   send(m, '7@[N9]1[AC]');
   check('AC at Clear Memory? keeps the screen it came from', m.view().line1, '7');
 }
@@ -1341,6 +1338,28 @@ for (const [key, mode, secondPage] of [
   m.switchBank(m.banks.length);
   for (let i = m.banks.length; i <= 300; i++) m.switchBank(i);
   check('banks: the number of banks is capped', m.banks.length <= 200, true);
+}
+{
+  // Prog with a ranked list: G1 G2 G3, then P1-P4 of the group
+  const m = new Machine();
+  const mk = (n) => ({ mode: 'COMP', tokens: parseProgramText(`?→A:A+${n}`, 'COMP').tokenIds });
+  m.library = Array.from({ length: 12 }, (_, i) => mk(i + 1));
+  send(m, '[PROG]');
+  check('Prog lists the three groups', m.view().line1 + '|' + m.view().line2, ' G1   G2    G3  |1   2   3');
+  send(m, '2');
+  check('a group lists P1 to P4', m.view().line1 + '|' + m.view().line2, ' P1  P2  P3  P4 |1  2  3  4');
+  send(m, '3');
+  check('G2 P3 runs rank 7', m.view().line1, 'A?');
+  send(m, '10=');
+  check('rank 7 adds 7', shown(m), '17');
+  send(m, '[PROG][AC]');
+  check('AC backs out of Prog', m.screen, 'result');
+  m.library = m.library.slice(0, 3);
+  send(m, '[PROG]');
+  check('one group goes straight to P1 to P3', m.view().line1.trim().split(/\s+/).join(' '), 'P1 P2 P3');
+  m.library = [];
+  send(m, '[AC][PROG]');
+  check('no list: Prog shows the unit\'s P1-P4 screen', m.view().line1, ' P1  P2  P3  P4 ');
 }
 {
   // the Programs list runs a stored program straight away, from any screen

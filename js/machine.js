@@ -34,6 +34,11 @@ export class Machine {
     // areas sharing 680 bytes), so anything in a bank can be keyed into the
     // real unit. `programs` always means the current bank.
     this.banks = [[null, null, null, null]];
+    // The ranked program list behind Prog, [{ mode, tokens: [ids] }]: G1 is
+    // ranks 1-4, G2 ranks 5-8, and so on. Empty means Prog lists P1-P4.
+    this.library = [];
+    // Counts SHIFT 9 3 presses; the page answers each with a surprise.
+    this.prank = 0;
     this.bank = 0;
     this.keepBank = null;         // Program Studio: (i) => bank i holds unsaved drafts
     this.reset();
@@ -858,22 +863,9 @@ export class Machine {
             })
           },
           {
+            // In this edition All resets nothing: the page answers it.
             label: 'All',
-            run: ask('Reset All?', (s) => {
-              const contrast = s.setup.contrast;
-              s.setup = {
-                angle: 'Deg', disp: 'Norm', digits: 0, norm: 1,
-                frac: 'ab/c', cplx: 'a+bi', freq: true, contrast
-              };
-              s.mode = 'COMP';
-              s.base = 10;
-              for (const k of Object.keys(s.vars)) s.vars[k] = 0;
-              s.ans = C(0);
-              s.fvars = {};
-              s.stat.clear();
-              s.programs = [null, null, null, null];
-              s.reset();
-            })
+            run: (s) => { s.prank++; }
           }
         ]
       }]
@@ -1267,13 +1259,41 @@ export class Machine {
   // as the unit does; banks are switched on the PRGM mode pickers.
   openProgram() {
     if (this.mode === 'PRGM') { this.openProgramRoot(); return; }
+    if (this.library.length) { this.openLibraryGroups(); return; }
     this.prog = { stage: 'progkey' };
     this.screen = 'prog';
+  }
+
+  // Prog with a ranked list: pick a group of four, then P1-P4 within it.
+  openLibraryGroups() {
+    const groups = Math.ceil(this.library.length / 4);
+    if (groups === 1) { this.openLibraryGroup(0); return; }
+    this.openMenu({
+      page: 0,
+      pages: [{ items: Array.from({ length: groups }, (_, g) => ({ label: `G${g + 1}`, run: (s) => s.openLibraryGroup(g) })) }]
+    });
+  }
+
+  openLibraryGroup(group) {
+    const items = this.library.slice(group * 4, group * 4 + 4)
+      .map((_, i) => ({ label: `P${i + 1}`, run: (s) => s.runLibraryProgram(group * 4 + i) }));
+    this.openMenu({ page: 0, pages: [{ items }] });
+  }
+
+  /** Run the program at this rank, always as shipped. */
+  runLibraryProgram(index) {
+    const entry = this.library[index];
+    if (!entry) return false;
+    return this.runNow(new Program(entry.mode, entry.tokens.map(tok)), null);
   }
 
   /** Run a stored program at once, as if it were chosen with Prog. */
   runStored(slot) {
     if (!this.programs[slot]) return false;
+    return this.runNow(this.programs[slot], slot);
+  }
+
+  runNow(program, slot) {
     this.closePrograms();
     this.menu = null;
     this.pending = null;
@@ -1285,7 +1305,7 @@ export class Machine {
     this.clearEntry();
     this.screen = 'prog';
     try {
-      this.runProgram(slot);
+      this.runProgramObject(program, slot);
     } catch (e) {
       if (e instanceof CalcError) this.raise(e.kind);
       else if (e && e.mathError) this.raise('Math');
@@ -1551,7 +1571,10 @@ export class Machine {
 
   runProgram(slot) {
     const prog = this.programs[slot];
-    if (!prog) return;
+    if (prog) this.runProgramObject(prog, slot);
+  }
+
+  runProgramObject(prog, slot) {
     const savedMode = this.mode;
     this.mode = prog.mode;
     const run = prog.start(this);

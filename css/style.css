@@ -1065,6 +1065,33 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
 }
 .programs-intro { margin: 4px 0 10px; color: #5b6660; font-size: 14px; }
 .program-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--st-line); }
+.program-list li {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--st-line);
+  background: #faf7f0;
+  transition: transform .15s ease;
+}
+.program-list li:nth-child(4n) { border-bottom: 3px solid var(--st-line-strong); }
+.program-list li.dragging {
+  position: relative;
+  z-index: 2;
+  transition: none;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.program-handle {
+  flex: 0 0 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a8f88;
+  font-size: 22px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .program-list button {
   display: flex;
   align-items: center;
@@ -1073,14 +1100,13 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   min-height: 52px;
   padding: 8px 2px;
   border: 0;
-  border-bottom: 1px solid var(--st-line);
   background: none;
   color: var(--st-ink);
   font: inherit;
   text-align: left;
 }
 .program-list button:active { background: var(--st-accent-soft); }
-.program-id { flex: 0 0 34px; font-weight: 700; color: #5b6660; }
+.program-key { flex: 0 0 46px; font-size: 13px; font-weight: 700; color: var(--st-accent); }
 .program-name { flex: 1; }
 .program-mode {
   flex: 0 0 auto;
@@ -1091,7 +1117,61 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   font-size: 12px;
   font-weight: 600;
 }
-.programs-edit { display: block; margin: 14px auto 0; border-color: transparent; background: none; color: var(--st-accent); }
+
+/* ---- SHIFT 9 3: the face that saw it coming --------------------------------- */
+.prank {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .35);
+  overflow: hidden;
+}
+.prank[hidden] { display: none; }
+.prank-burst {
+  position: absolute;
+  width: 160vmax;
+  height: 160vmax;
+  background: repeating-conic-gradient(rgba(255, 210, 63, .55) 0 9deg, rgba(255, 140, 66, .0) 9deg 18deg);
+  border-radius: 50%;
+  animation: prank-spin 6s linear infinite;
+}
+.prank-face {
+  position: relative;
+  width: min(62vw, 260px);
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45));
+}
+.prank-text {
+  position: relative;
+  margin: 18px 16px 0;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: #fff;
+  color: #1d2521;
+  font: 500 16px/1.35 "Avenir Next", Avenir, -apple-system, sans-serif;
+  text-align: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .3);
+}
+.prank-text b { display: block; font-size: 24px; color: #d6452b; }
+.prank.pop .prank-face { animation: prank-pop .7s cubic-bezier(.2, 1.6, .4, 1) both, prank-wobble 1.1s ease-in-out .7s infinite; }
+.prank.pop .prank-text { animation: prank-rise .45s ease-out .45s both; }
+@keyframes prank-pop {
+  0% { transform: scale(0) rotate(-200deg); }
+  70% { transform: scale(1.2) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes prank-wobble {
+  0%, 100% { transform: rotate(-5deg) scale(1); }
+  50% { transform: rotate(5deg) scale(1.05); }
+}
+@keyframes prank-rise {
+  from { opacity: 0; transform: translateY(24px) scale(.8); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes prank-spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   #studio, #studio.studio-leave, #studio-editor-view, .program-library { animation: none; }

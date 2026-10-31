@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v12';
-import { LCD, GLASS } from './lcd.js?v=bank-v12';
-import { Machine } from './machine.js?v=bank-v12';
-import { setupProgramStudio } from './studio.js?v=bank-v12';
-import { PROGRAMS } from './program-catalog.generated.js?v=bank-v12';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v13';
+import { LCD, GLASS } from './lcd.js?v=bank-v13';
+import { Machine } from './machine.js?v=bank-v13';
+import { parseProgramText } from './program-codec.js?v=bank-v13';
+import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v13';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -72,11 +72,42 @@ let lastModeLabel = '';
 
 modeChip.addEventListener('click', () => tap('MODE'));
 
-const studioController = setupProgramStudio(machine, () => {
-  blink = true;
-  lastBlink = performance.now();
-  dirty = true;
-});
+// ---- the twelve built-in programs ---------------------------------------------
+// They are rebuilt from the catalog on every start, so nothing can lose them.
+// PRGM mode holds them in banks that fit 680 bytes (P1-P4, P5-P6, P7-P9,
+// P10-P12); Prog lists them in the student's own order, four to a group.
+const programTokens = new Map(PROGRAMS.map((p) => [p.id, parseProgramText(p.source, p.mode).tokenIds]));
+{
+  const groups = [];
+  for (const program of PROGRAMS) {
+    const group = groups[groups.length - 1];
+    const bytes = group ? group.reduce((sum, p) => sum + p.bytes, 0) : 0;
+    if (!group || group.length === 4 || bytes + program.bytes > 680) groups.push([program]);
+    else group.push(program);
+  }
+  machine.banks = groups.map(() => [null, null, null, null]);
+  groups.forEach((group, bank) => {
+    machine.bank = bank;
+    group.forEach((p, slot) => machine.setStudioProgram(slot, p.mode, programTokens.get(p.id)));
+  });
+  machine.bank = 0;
+}
+
+const ORDER_KEY = 'fx50fhii.program-order';
+let order = PROGRAMS.map((p) => p.id);
+try {
+  const saved = JSON.parse(localStorage.getItem(ORDER_KEY));
+  if (Array.isArray(saved)) {
+    const mine = saved.filter((id, i) => PROGRAM_BY_ID.has(id) && saved.indexOf(id) === i);
+    order = [...mine, ...order.filter((id) => !mine.includes(id))];
+  }
+} catch {
+  // No saved order: catalog order.
+}
+function applyOrder() {
+  machine.library = order.map((id) => ({ mode: PROGRAM_BY_ID.get(id).mode, tokens: programTokens.get(id) }));
+}
+applyOrder();
 
 function tap(id) {
   const b = buttons.get(id);
@@ -84,9 +115,7 @@ function tap(id) {
     b.classList.add('down');
     setTimeout(() => b.classList.remove('down'), 90);
   }
-  studioController.beforeKey();
   machine.press(id);
-  studioController.syncFromMachine();
   blink = true;
   lastBlink = performance.now();
   dirty = true;
@@ -140,6 +169,10 @@ function describeView(v) {
 
 function frame(now) {
   if (now - lastBlink > 480) { blink = !blink; lastBlink = now; dirty = true; }
+  if (machine.prank !== lastPrank) {
+    lastPrank = machine.prank;
+    showPrank();
+  }
   if (machine.notice && machine.notice.id !== lastNotice) {
     lastNotice = machine.notice.id;
     showHint(machine.notice.text);
@@ -193,42 +226,104 @@ helpToggle.addEventListener('click', async () => {
 
 window.fx = machine;   // handy for poking at state from the console
 
-// ---- Programs list from the faceplate ----------------------------------------
-// On a phone the page is the calculator alone. Holding the faceplate above the
-// display (brand and solar panel) for 0.6 s lists the library programs; one
-// tap runs a program on the calculator. Program Studio sits behind a link.
-const studioPanel = document.getElementById('studio');
-const studioToggle = document.getElementById('studio-toggle');
+// ---- Programs list ------------------------------------------------------------
+// On a phone the page is the calculator alone: holding the faceplate above the
+// display (brand and solar panel) for 0.6 s opens the list. A tap runs a
+// program; dragging its handle ranks it, and the rank sets where Prog finds
+// it (G1 P1 is the top program).
 const programsPanel = document.getElementById('programs');
 const programList = document.getElementById('program-list');
-for (const program of PROGRAMS) {
-  const item = document.createElement('li');
-  const button = document.createElement('button');
-  button.type = 'button';
-  for (const [cls, text] of [['program-id', program.id], ['program-name', program.title], ['program-mode', program.mode]]) {
-    const span = document.createElement('span');
-    span.className = cls;
-    span.textContent = text;
-    button.append(span);
-  }
-  button.addEventListener('click', () => {
-    programsPanel.hidden = true;
-    studioController.syncFromMachine();
-    const problem = studioController.runLibrary(program.id);
-    if (problem) showHint(problem, false);
-    blink = true;
-    lastBlink = performance.now();
-    dirty = true;
-  });
-  item.append(button);
-  programList.append(item);
+const redraw = () => { blink = true; lastBlink = performance.now(); dirty = true; };
+
+function renderPrograms() {
+  programList.replaceChildren(...order.map((id, rank) => {
+    const program = PROGRAM_BY_ID.get(id);
+    const item = document.createElement('li');
+    const handle = document.createElement('span');
+    handle.className = 'program-handle';
+    handle.textContent = '≡';
+    handle.setAttribute('aria-label', `Drag to rank ${program.title}`);
+    const button = document.createElement('button');
+    button.type = 'button';
+    for (const [cls, text] of [
+      ['program-key', `G${Math.floor(rank / 4) + 1} P${rank % 4 + 1}`],
+      ['program-name', program.title],
+      ['program-mode', program.mode]
+    ]) {
+      const span = document.createElement('span');
+      span.className = cls;
+      span.textContent = text;
+      button.append(span);
+    }
+    button.addEventListener('click', () => {
+      programsPanel.hidden = true;
+      machine.runLibraryProgram(rank);
+      redraw();
+    });
+    handle.addEventListener('pointerdown', (e) => startDrag(e, item, handle));
+    item.append(handle, button);
+    return item;
+  }));
 }
+
+function startDrag(e, item, handle) {
+  e.preventDefault();
+  handle.setPointerCapture(e.pointerId);
+  const rows = [...programList.children];
+  const from = rows.indexOf(item);
+  const mids = rows.map((row) => { const r = row.getBoundingClientRect(); return r.top + r.height / 2; });
+  const height = item.getBoundingClientRect().height;
+  const startY = e.clientY;
+  let to = from;
+  item.classList.add('dragging');
+  const move = (ev) => {
+    const dy = ev.clientY - startY;
+    const centre = mids[from] + dy;
+    to = rows.reduce((n, row, i) => (i !== from && mids[i] < centre ? n + 1 : n), 0);
+    item.style.transform = `translateY(${dy}px)`;
+    rows.forEach((row, i) => {
+      if (row === item) return;
+      const shift = from < to && i > from && i <= to ? -height : from > to && i >= to && i < from ? height : 0;
+      row.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+  };
+  const end = () => {
+    handle.removeEventListener('pointermove', move);
+    handle.removeEventListener('pointerup', end);
+    handle.removeEventListener('pointercancel', end);
+    if (to !== from) {
+      const [id] = order.splice(from, 1);
+      order.splice(to, 0, id);
+      try { localStorage.setItem(ORDER_KEY, JSON.stringify(order)); } catch { /* kept for this visit only */ }
+      applyOrder();
+    }
+    renderPrograms();
+  };
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+
+renderPrograms();
+document.getElementById('programs-open').addEventListener('click', () => { programsPanel.hidden = false; });
 document.getElementById('programs-close').addEventListener('click', () => { programsPanel.hidden = true; });
-document.getElementById('programs-edit').addEventListener('click', () => {
-  programsPanel.hidden = true;
-  if (studioPanel.hidden) studioToggle.click();
-});
 programsPanel.addEventListener('click', (e) => { if (e.target === programsPanel) programsPanel.hidden = true; });
+
+// ---- SHIFT 9 3 --------------------------------------------------------------
+// CLR All resets nothing in this edition; whoever tries it gets a face instead.
+const prank = document.getElementById('prank');
+let lastPrank = machine.prank;
+let prankTimer = 0;
+function showPrank() {
+  prank.hidden = false;
+  prank.classList.remove('pop');
+  void prank.offsetWidth;   // restart the animation
+  prank.classList.add('pop');
+  clearTimeout(prankTimer);
+  prankTimer = setTimeout(() => { prank.hidden = true; }, 3600);
+}
+prank.addEventListener('click', () => { prank.hidden = true; });
+
 const phone = matchMedia('(max-width: 520px)');
 let holdTimer = 0;
 let holdStart = null;
@@ -241,7 +336,7 @@ shell.addEventListener('pointerdown', (e) => {
   holdStart = { x: e.clientX, y: e.clientY };
   holdTimer = setTimeout(() => {
     holdStart = null;
-    if (studioPanel.hidden) programsPanel.hidden = false;
+    programsPanel.hidden = false;
   }, 600);
 });
 window.addEventListener('pointerup', cancelHold);

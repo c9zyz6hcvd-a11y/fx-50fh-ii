@@ -2,7 +2,7 @@
 // opened. Every file is cached together under one version, so an update
 // arrives whole: change VERSION whenever any listed file changes.
 
-const VERSION = 'bank-v12';
+const VERSION = 'bank-v13';
 const FILES = [
   './',
   'index.html',
@@ -12,6 +12,7 @@ const FILES = [
   'assets/icon-180.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
+  'assets/prank-face.webp',
   'output/pdf/fx-50fh-ii-s5-program-library.pdf',
   'js/consts.js',
   'js/expr.js',
