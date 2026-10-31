@@ -199,7 +199,7 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
   check('the page has the Programs list and no Program Studio',
     html.includes('id="program-list"') && html.includes('id="programs-open"') && !html.includes('id="studio"'), true);
   check('SHIFT 9 3 has its face ready, and the offline cache carries it',
-    html.includes('src="assets/prank-face.webp"')
+    html.includes('data-src="assets/prank-face.webp"') && !html.includes(' src="assets/prank-face.webp"')
       && readFileSync(new URL('../sw.js', import.meta.url), 'utf8').includes("'assets/prank-face.webp'"), true);
   check('mobile column layout cancels the desktop Studio flex basis',
     /@media \(max-width: 820px\)[\s\S]*?#studio \{ flex: none; margin-top: 0; width: 100%; max-width: 720px; \}/.test(css), true);

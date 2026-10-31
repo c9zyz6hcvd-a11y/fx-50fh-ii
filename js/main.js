@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v17';
-import { LCD, GLASS } from './lcd.js?v=bank-v17';
-import { Machine } from './machine.js?v=bank-v17';
-import { parseProgramText } from './program-codec.js?v=bank-v17';
-import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v17';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v18';
+import { LCD, GLASS } from './lcd.js?v=bank-v18';
+import { Machine } from './machine.js?v=bank-v18';
+import { parseProgramText } from './program-codec.js?v=bank-v18';
+import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v18';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -325,7 +325,10 @@ programsPanel.addEventListener('click', (e) => { if (e.target === programsPanel)
 const prank = document.getElementById('prank');
 let lastPrank = machine.prank;
 let prankTimer = 0;
+// The face loads only when it is needed, so link previews never show it.
 function showPrank() {
+  const face = prank.querySelector('.prank-face');
+  if (!face.getAttribute('src')) face.src = face.dataset.src;
   prank.hidden = false;
   prank.classList.remove('pop');
   void prank.offsetWidth;   // restart the animation
