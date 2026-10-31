@@ -697,6 +697,11 @@ export class Machine {
       this.closeMenu();
       return;
     }
+    if (m.confirm) {
+      if (id !== 'EXE') return;
+      this.closeMenu();
+      return m.confirm(this);
+    }
     if (id === 'LEFT') { m.page = (m.page - 1 + m.pages.length) % m.pages.length; return; }
     if (id === 'RIGHT') { m.page = (m.page + 1) % m.pages.length; return; }
     if (id === 'DOWN' && m.scroll) { m.page = (m.page + 1) % m.pages.length; return; }
@@ -823,22 +828,26 @@ export class Machine {
 
   openClrMenu() {
     const statMode = this.mode === 'SD' || this.mode === 'REG';
+    // Each choice waits for EXE, and AC backs out without clearing anything
+    // (user's guide, "Clearing All Memory Contents"). The guide does not
+    // picture the question, so its wording is ours.
+    const ask = (title, run) => (s) => s.openMenu({ page: 0, pages: [{ title, items: [] }], confirm: run });
     this.openMenu({
       page: 0,
       pages: [{
         items: [
           statMode
-            ? { label: 'Stat', run: (s) => { s.stat.clear(); s.clearEntry(); } }
+            ? { label: 'Stat', run: ask('Clear Stat?', (s) => { s.stat.clear(); s.clearEntry(); }) }
             : {
               label: 'Mem',
-              run: (s) => {
+              run: ask('Clear Memory?', (s) => {
                 for (const k of Object.keys(s.vars)) s.vars[k] = 0;
                 s.ans = C(0); s.fvars = {}; s.clearEntry();
-              }
+              })
             },
           {
             label: 'Setup',
-            run: (s) => {
+            run: ask('Clear Setup?', (s) => {
               s.setup = {
                 angle: 'Deg', disp: 'Norm', digits: 0, norm: 1,
                 frac: 'ab/c', cplx: 'a+bi', freq: true, contrast: s.setup.contrast
@@ -846,11 +855,11 @@ export class Machine {
               s.mode = 'COMP';
               s.clearEntry();
               s.history = [];
-            }
+            })
           },
           {
             label: 'All',
-            run: (s) => {
+            run: ask('Reset All?', (s) => {
               const contrast = s.setup.contrast;
               s.setup = {
                 angle: 'Deg', disp: 'Norm', digits: 0, norm: 1,
@@ -864,7 +873,7 @@ export class Machine {
               s.stat.clear();
               s.programs = [null, null, null, null];
               s.reset();
-            }
+            })
           }
         ]
       }]

@@ -427,7 +427,24 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
   const m = new Machine();
   send(m, '1+1=2+2=');
   send(m, '@[N9]2');
+  check('CLR Setup asks before clearing', m.view().line1 + '|' + m.history.length, 'Clear Setup?|2');
+  send(m, '=');
   check('CLR Setup clears calculation history as a reset operation', m.history.length, 0);
+}
+{
+  // user's guide: every CLR choice waits for EXE; AC instead leaves things as they were
+  const m = new Machine();
+  m.setStudioProgram(0, 'COMP', ['pIn', 'pAsg', 'varA']);
+  send(m, '@[N9]3');
+  check('CLR All asks before resetting', m.view().line1, 'Reset All?');
+  send(m, '1 2 [LEFT][DEL]');
+  check('CLR All ignores other keys while it asks', Boolean(m.programs[0]) && m.view().line1, 'Reset All?');
+  send(m, '[AC]');
+  check('AC at Reset All? keeps the programs', Boolean(m.programs[0]), true);
+  send(m, '@[N9]3=');
+  check('EXE at Reset All? clears the program memory', m.programs.every((p) => !p), true);
+  send(m, '7@[N9]1[AC]');
+  check('AC at Clear Memory? keeps the screen it came from', m.view().line1, '7');
 }
 
 // ---- basic arithmetic -------------------------------------------------------

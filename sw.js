@@ -2,7 +2,7 @@
 // opened. Every file is cached together under one version, so an update
 // arrives whole: change VERSION whenever any listed file changes.
 
-const VERSION = 'bank-v7';
+const VERSION = 'bank-v8';
 const FILES = [
   './',
   'index.html',
