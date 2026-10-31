@@ -14,8 +14,7 @@ const ASCII_ALIASES = [
   ['sqrt(', 'sqrt'], ['cbrt(', 'cbrt'], ['pi', 'pi'],
   ['->', 'pAsg'], ['=>', 'pJump'],
   // fx-50FH (first edition) names for σx, sx, σy, sy
-  ['xσn⁻¹', 'xsn1'], ['xσn-1', 'xsn1'], ['xσn', 'xsn'],
-  ['yσn⁻¹', 'ysn1'], ['yσn-1', 'ysn1'], ['yσn', 'ysn']
+  ['xσn⁻¹', 'xsn1'], ['xσn', 'xsn'], ['yσn⁻¹', 'ysn1'], ['yσn', 'ysn']
 ];
 
 const AMBIGUOUS_IDS = new Set([
@@ -25,6 +24,8 @@ const AMBIGUOUS_IDS = new Set([
   'regA', 'regB', 'regC', 'regR', 'Sn', 'dms', 'degU'
 ]);
 
+const asciiLower = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
 function aliases() {
   const out = ASCII_ALIASES.map(([label, id]) => ({ label, id }));
   for (const [id, spec] of Object.entries(TOK)) {
@@ -32,13 +33,14 @@ function aliases() {
     if (AMBIGUOUS_IDS.has(id) || label.length < 2) continue;
     out.push({ label, id });
   }
+  // σx and Σx differ only by case, so labels are kept by exact spelling and
+  // matching tries the exact spelling before ignoring the case of A-Z.
   const seen = new Set();
   return out
     .sort((a, b) => b.label.length - a.label.length)
     .filter(({ label }) => {
-      const key = label.toLocaleLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
+      if (seen.has(label)) return false;
+      seen.add(label);
       return true;
     });
 }
@@ -106,19 +108,19 @@ export function parseProgramText(source, mode = 'COMP') {
     if (ch === '\n') { if (tokenIds.length) push(':'); i++; continue; }
     if (/\s/u.test(ch)) { i++; continue; }
 
-    let matched = false;
-    for (const entry of words) {
+    const fits = (entry, exact) => {
       const candidate = text.slice(i, i + entry.label.length);
-      if (candidate.toLocaleLowerCase() !== entry.label.toLocaleLowerCase()) continue;
+      if (exact ? candidate !== entry.label : asciiLower(candidate) !== asciiLower(entry.label)) return false;
       const last = entry.label[entry.label.length - 1];
       const next = text[i + entry.label.length] || '';
-      if (/\p{L}|\p{N}/u.test(last) && /\p{L}|\p{N}/u.test(next)) continue;
+      return !(/\p{L}|\p{N}/u.test(last) && /\p{L}|\p{N}/u.test(next));
+    };
+    const entry = words.find((w) => fits(w, true)) || words.find((w) => fits(w, false));
+    if (entry) {
       push(entry.id);
       i += entry.label.length;
-      matched = true;
-      break;
+      continue;
     }
-    if (matched) continue;
 
     const previous = tokenIds.length ? tok(tokenIds[tokenIds.length - 1]) : null;
     const id = singleToken(ch, mode, previous);

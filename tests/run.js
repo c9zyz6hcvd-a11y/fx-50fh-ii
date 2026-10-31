@@ -323,10 +323,16 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
   check('no menu label is cut short', whole, true);
 }
 {
-  const old = parseProgramText('xσn◢xσn⁻¹◢xσn-1◢yσn◢yσn⁻¹◢', 'REG');
+  const old = parseProgramText('xσn◢xσn⁻¹◢yσn◢yσn⁻¹◢', 'REG');
   check('programs written with the first-edition names still read',
-    old.tokens.map((t) => t.id).join(' '), 'xsn pOut xsn1 pOut xsn1 pOut ysn pOut ysn1 pOut');
-  check('and are written back with the fx-50FH II names', formatProgramText(old.tokens), 'σx◢sx◢sx◢σy◢sy◢');
+    old.tokens.map((t) => t.id).join(' '), 'xsn pOut xsn1 pOut ysn pOut ysn1 pOut');
+  check('and are written back with the fx-50FH II names', formatProgramText(old.tokens), 'σx◢sx◢σy◢sy◢');
+  const ids = ['varA', 'mul', 'xsn', 'add', 'Sx', 'add', 'ysn', 'add', 'Sy', 'add', 'xsn1', 'add', 'ysn1', 'sub', '1'];
+  const again = parseProgramText(formatProgramText(ids.map(tok)), 'REG');
+  check('σx and Σx (σy and Σy) survive a Studio round trip as different commands',
+    again.tokenIds.join(' '), ids.join(' '));
+  check('xσn-1 written by an earlier build still means xσn minus 1',
+    parseProgramText('xσn-1', 'SD').tokenIds.join(' '), 'xsn sub 1');
 }
 {
   // guide example: newborn weight against days, REG FreqOff
