@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v14';
-import { LCD, GLASS } from './lcd.js?v=bank-v14';
-import { Machine } from './machine.js?v=bank-v14';
-import { parseProgramText } from './program-codec.js?v=bank-v14';
-import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v14';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v15';
+import { LCD, GLASS } from './lcd.js?v=bank-v15';
+import { Machine } from './machine.js?v=bank-v15';
+import { parseProgramText } from './program-codec.js?v=bank-v15';
+import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v15';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
