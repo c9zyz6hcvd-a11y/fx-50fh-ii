@@ -1259,25 +1259,11 @@ export class Machine {
   // as the unit does; banks are switched on the PRGM mode pickers.
   openProgram() {
     if (this.mode === 'PRGM') { this.openProgramRoot(); return; }
-    if (this.library.length) { this.openLibraryGroups(); return; }
+    // With a ranked list Prog shows P1-P4 of group 1 at once; a small number
+    // names the group, and ◀ ▶ step through the groups of four.
+    if (this.library.length) { this.prog = { stage: 'libpick', group: 0 }; this.screen = 'prog'; return; }
     this.prog = { stage: 'progkey' };
     this.screen = 'prog';
-  }
-
-  // Prog with a ranked list: pick a group of four, then P1-P4 within it.
-  openLibraryGroups() {
-    const groups = Math.ceil(this.library.length / 4);
-    if (groups === 1) { this.openLibraryGroup(0); return; }
-    this.openMenu({
-      page: 0,
-      pages: [{ items: Array.from({ length: groups }, (_, g) => ({ label: `G${g + 1}`, run: (s) => s.openLibraryGroup(g) })) }]
-    });
-  }
-
-  openLibraryGroup(group) {
-    const items = this.library.slice(group * 4, group * 4 + 4)
-      .map((_, i) => ({ label: `P${i + 1}`, run: (s) => s.runLibraryProgram(group * 4 + i) }));
-    this.openMenu({ page: 0, pages: [{ items }] });
   }
 
   /** Run the program at this rank, always as shipped. */
@@ -1325,6 +1311,13 @@ export class Machine {
       this.clearEntry();
       this.leaveEmptyBank();
       if (this.mode === 'PRGM') this.openProgramRoot();
+      return;
+    }
+
+    if (p.stage === 'libpick') {
+      const groups = Math.ceil(this.library.length / 4);
+      if (id === 'LEFT' || id === 'RIGHT') { p.group = (p.group + (id === 'RIGHT' ? 1 : groups - 1)) % groups; return; }
+      if (nkey !== undefined) this.runLibraryProgram(p.group * 4 + nkey);
       return;
     }
 
@@ -1844,6 +1837,19 @@ export class Machine {
     }
     if (p.stage === 'runpick') {
       return { ...picker('RUN', 'RUN     Program'), line2: `P-${used} ${free.padStart(3, ' ')}` };
+    }
+    if (p.stage === 'libpick') {
+      const count = Math.min(4, this.library.length - p.group * 4);
+      const many = this.library.length > 4;
+      const cells = ['1', ' ', ' ', '2', ' ', ' ', '3', ' ', ' ', '4'].map((c, i) => (i < (count - 1) * 3 + 1 ? c : ' '));
+      return {
+        line1: ' P1  P2  P3  P4 '.slice(0, count * 4).padEnd(16),
+        line2: cells.join('').replace(/\s+$/, ''),
+        line2Cells: cells,
+        left: String(p.group + 1),
+        scrollLeft: many,
+        scrollRight: many
+      };
     }
     if (p.stage === 'progkey') {
       const cells = ['1', ' ', ' ', '2', ' ', ' ', '3', ' ', ' ', '4'];

@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v15';
-import { LCD, GLASS } from './lcd.js?v=bank-v15';
-import { Machine } from './machine.js?v=bank-v15';
-import { parseProgramText } from './program-codec.js?v=bank-v15';
-import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v15';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v16';
+import { LCD, GLASS } from './lcd.js?v=bank-v16';
+import { Machine } from './machine.js?v=bank-v16';
+import { parseProgramText } from './program-codec.js?v=bank-v16';
+import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v16';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -245,8 +245,14 @@ function renderPrograms() {
     handle.setAttribute('aria-label', `Drag to rank ${program.title}`);
     const button = document.createElement('button');
     button.type = 'button';
+    // The key that reaches it: the small group number, then P1-P4 (Prog, ▶).
+    const key = document.createElement('span');
+    key.className = 'program-key';
+    const group = document.createElement('small');
+    group.textContent = String(Math.floor(rank / 4) + 1);
+    key.append(group, `P${rank % 4 + 1}`);
+    button.append(key);
     for (const [cls, text] of [
-      ['program-key', `G${Math.floor(rank / 4) + 1} P${rank % 4 + 1}`],
       ['program-name', program.title],
       ['program-mode', program.mode]
     ]) {

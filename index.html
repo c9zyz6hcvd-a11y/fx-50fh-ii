@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta name="description" content="A 1:1 working web recreation of the CASIO fx-50FH II (H.K.E.A.A. approved) programmable scientific calculator: all six modes, 23 built-in formulas, 40 scientific constants, base-n, statistics and the BASIC-like program mode.">
-<link rel="stylesheet" href="css/style.css?v=bank-v15">
+<link rel="stylesheet" href="css/style.css?v=bank-v16">
 </head>
 <body>
 
@@ -50,7 +50,7 @@
           <h2 id="programs-title">Programs</h2>
           <button id="programs-close" type="button" class="programs-close">Close</button>
         </header>
-        <p class="programs-intro">Tap one to run it. Drag ≡ to rank them: Prog then G1 holds your top four.</p>
+        <p class="programs-intro">Tap to run. Drag ≡ to rank. Prog shows group <small>1</small>; ▶ for <small>2</small>, <small>3</small>.</p>
         <ul id="program-list" class="program-list"></ul>
       </div>
     </section>
@@ -79,8 +79,8 @@
       <li><b>SHIFT 7</b> (CONST) → ten pages of four scientific constants.</li>
       <li><b>FMLA</b> → type a two-digit formula number 01–23, or scroll with
         ▼ ▲, then EXE. <b>SHIFT FMLA</b> (LOOK) shows the formula itself.</li>
-      <li><b>Prog</b> → G1 G2 G3, then P1–P4: the twelve built-in programs in
-        your order (G1 = your top four). Rank them in <b>Programs</b> (on a phone,
+      <li><b>Prog</b> → P1–P4 of group 1 (the small number on the left);
+        ◀ ▶ step to groups 2 and 3: the twelve built-in programs in your order. Rank them in <b>Programs</b> (on a phone,
         hold the solar panel). In PRGM mode Prog opens EDIT / RUN / DEL, where
         <b>◀ ▶</b> change bank.</li>
       <li>In BASE mode: x² = DEC, ^ = HEX, log = BIN, ln = OCT, and x⁻¹ opens
@@ -109,6 +109,6 @@
   </section>
 </main>
 
-<script type="module" src="js/main.js?v=bank-v15"></script>
+<script type="module" src="js/main.js?v=bank-v16"></script>
 </body>
 </html>

@@ -1063,7 +1063,7 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   color: var(--st-ink);
   font: 600 14px/1 "Avenir Next", Avenir, -apple-system, sans-serif;
 }
-.programs-intro { margin: 4px 0 10px; color: #5b6660; font-size: 14px; }
+.programs-intro { margin: 2px 0 8px; color: #5b6660; font-size: 13px; }
 .program-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--st-line); }
 .program-list li {
   display: flex;
@@ -1095,10 +1095,12 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
 .program-list button {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  min-height: 52px;
-  padding: 8px 2px;
+  min-height: 40px;
+  padding: 4px 2px;
+  font-size: 14px;
+  line-height: 1.22;
   border: 0;
   background: none;
   color: var(--st-ink);
@@ -1106,7 +1108,8 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   text-align: left;
 }
 .program-list button:active { background: var(--st-accent-soft); }
-.program-key { flex: 0 0 46px; font-size: 13px; font-weight: 700; color: var(--st-accent); }
+.program-key { flex: 0 0 34px; font-size: 14px; font-weight: 700; color: var(--st-accent); }
+.program-key small, .programs-intro small { font-size: 10px; vertical-align: 1px; margin-right: 1px; }
 .program-name { flex: 1; }
 .program-mode {
   flex: 0 0 auto;
