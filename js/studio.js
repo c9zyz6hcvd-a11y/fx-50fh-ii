@@ -5,7 +5,7 @@
 import { Program, PROGRAM_MEMORY, MAX_BANKS } from './program.js';
 import { bytesOf } from './tokens.js';
 import { formatProgramText, parseProgramText } from './program-codec.js';
-import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v11';
+import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v12';
 
 const STORAGE_KEY = 'fx50fhii.program-studio.v4';
 const LEGACY_STORAGE_KEYS = ['fx50fhii.program-studio.v3', 'fx50fhii.program-studio.v2'];
@@ -1119,7 +1119,8 @@ export function setupProgramStudio(machine, onMachineChange) {
       const atEnd = bank === machine.banks.length;
       const fresh = freshBankIndex();
       if (!free && !atEnd && fresh < 0) return banksFullMessage;
-      rememberUndo();
+      // Nothing the student wrote is replaced, so Studio's undo point is left alone.
+      const before = captureState();
       const tryPlace = (target, targetSlot) => {
         machine.closePrograms();
         machine.switchBank(target);
@@ -1136,7 +1137,7 @@ export function setupProgramStudio(machine, onMachineChange) {
       };
       if (!((free || atEnd) && tryPlace(bank, slot))) {
         const target = freshBankIndex();
-        if (target < 0 || !tryPlace(target, 0)) { restoreState(undoState); return banksFullMessage; }
+        if (target < 0 || !tryPlace(target, 0)) { restoreState(before); return banksFullMessage; }
       }
       markSeen();
       persist();
