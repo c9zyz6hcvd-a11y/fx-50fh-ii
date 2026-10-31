@@ -930,7 +930,7 @@ export class Machine {
       this.openMenu({
         page: 0,
         pages: [
-          { items: [{ label: 'x̄', run: push('xbar') }, { label: 'xσn', run: push('xsn') }, { label: 'xσn-1', run: push('xsn1') }] },
+          { items: [{ label: 'x̄', run: push('xbar') }, { label: 'σx', run: push('xsn') }, { label: 'sx', run: push('xsn1') }] },
           { items: [{ label: 'minX', run: push('minX') }, { label: 'maxX', run: push('maxX') }] }
         ]
       });
@@ -954,8 +954,8 @@ export class Machine {
     this.openMenu({
       page,
       pages: [
-        { items: [{ label: 'x̄', run: push('xbar') }, { label: 'xσn', run: push('xsn') }, { label: 'xσn-1', run: push('xsn1') }] },
-        { items: [{ label: 'ȳ', run: push('ybar') }, { label: 'yσn', run: push('ysn') }, { label: 'yσn-1', run: push('ysn1') }] },
+        { items: [{ label: 'x̄', run: push('xbar') }, { label: 'σx', run: push('xsn') }, { label: 'sx', run: push('xsn1') }] },
+        { items: [{ label: 'ȳ', run: push('ybar') }, { label: 'σy', run: push('ysn') }, { label: 'sy', run: push('ysn1') }] },
         quad
           ? { items: [{ label: 'a', run: push('regA') }, { label: 'b', run: push('regB') }, { label: 'c', run: push('regC') }] }
           : { items: [{ label: 'a', run: push('regA') }, { label: 'b', run: push('regB') }, { label: 'r', run: push('regR') }] },
@@ -978,7 +978,8 @@ export class Machine {
   }
 
   openRegTypeMenu() {
-    const set = (t) => (s) => { s.stat.type = t; s.clearEntry(); };
+    // With data entered, the guide's TYPE example lands on the first item (x1=).
+    const set = (t) => (s) => { s.stat.type = t; s.clearEntry(); if (s.stat.count) s.openStatBrowse(0); };
     this.openMenu({
       page: 0,
       pages: [
@@ -1696,15 +1697,26 @@ export class Machine {
     const row1 = new Array(16).fill(' ');
     const row2 = new Array(10).fill(' ');
 
+    // The unit centres each label over its number, a hair to the right: a
+    // lower cell's centre falls at 1.02 + 1.433 * cell upper cells (lcd.js
+    // geometry). Labels that would collide slide apart, and a page too full
+    // for spaces between its labels packs them edge to edge rather than
+    // cutting a word.
+    const cellOf = (i) => Math.max(0, Math.min(9, slots === 1 ? 0 : i * (7 - slots)));
+    const labels = items.map((it) => lcdTextCells(it.label));
+    const width = labels.reduce((sum, l) => sum + l.length, 0);
+    const gap = width + labels.length - 1 <= 16 ? 1 : 0;
+    const starts = labels.map((l, i) => Math.ceil(1.02 + 1.433 * cellOf(i) - l.length / 2));
+    for (let i = 0; i < starts.length; i++) {
+      starts[i] = Math.max(starts[i], i ? starts[i - 1] + labels[i - 1].length + gap : 0);
+    }
+    for (let i = starts.length - 1; i >= 0; i--) {
+      const limit = i === starts.length - 1 ? 16 : starts[i + 1] - gap;
+      starts[i] = Math.max(0, Math.min(starts[i], limit - labels[i].length));
+    }
     items.forEach((it, i) => {
-      const label = lcdTextCells(it.label).slice(0, Math.floor(16 / slots));
-      let start = Math.round((i * 16) / slots);
-      start = Math.min(start, 16 - label.length);
-      for (let c = 0; c < label.length; c++) row1[start + c] = label[c];
-
-      const cell = slots === 1 ? 0 : i * (7 - slots);
-      const digit = String(base + i);
-      row2[Math.max(0, Math.min(9, cell))] = digit;
+      row2[cellOf(i)] = String(base + i);
+      labels[i].forEach((ch, c) => { if (starts[i] + c < 16) row1[starts[i] + c] = ch; });
     });
 
     const paged = m.pages.length > 1;

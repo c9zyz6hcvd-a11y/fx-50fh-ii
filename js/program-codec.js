@@ -12,7 +12,10 @@ const ASCII_ALIASES = [
   ['sinh^-1(', 'asinh'], ['cosh^-1(', 'acosh'], ['tanh^-1(', 'atanh'],
   ['sin^-1(', 'asin'], ['cos^-1(', 'acos'], ['tan^-1(', 'atan'],
   ['sqrt(', 'sqrt'], ['cbrt(', 'cbrt'], ['pi', 'pi'],
-  ['->', 'pAsg'], ['=>', 'pJump']
+  ['->', 'pAsg'], ['=>', 'pJump'],
+  // fx-50FH (first edition) names for σx, sx, σy, sy
+  ['xσn⁻¹', 'xsn1'], ['xσn-1', 'xsn1'], ['xσn', 'xsn'],
+  ['yσn⁻¹', 'ysn1'], ['yσn-1', 'ysn1'], ['yσn', 'ysn']
 ];
 
 const AMBIGUOUS_IDS = new Set([

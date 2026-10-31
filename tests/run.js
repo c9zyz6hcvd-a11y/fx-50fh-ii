@@ -222,7 +222,7 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
   m.openDrgMenu();
   v = m.view();
   check('DRG renders three choices rather than a title-only screen',
-    v.line1 === 'D    R     G    ' && v.line2Cells.join('') === '1   2   3 ', true);
+    v.line1 === ' D     R    G   ' && v.line2Cells.join('') === '1   2   3 ', true);
 
   m.openSetup(2);
   v = m.view();
@@ -283,9 +283,67 @@ check('every hotspot stays inside the fitted shell', KEYS.every((key) =>
   m.mode = 'SD';
   m.openSVar();
   const cells = lcdTextCells(m.view().line1);
-  check('S-VAR x-bar occupies one physical LCD cell', cells[0], 'x̄');
+  check('S-VAR x-bar occupies one physical LCD cell', cells[1], 'x̄');
   check('S-VAR still fills exactly sixteen upper LCD cells', cells.length, 16);
-  check('combined LCD marks draw as an overlay rather than a second character', glyphLayers(cells[0]).length, 2);
+  check('combined LCD marks draw as an overlay rather than a second character', glyphLayers(cells[1]).length, 2);
+  // positions read off a photograph of an fx-50FH II showing this menu
+  check('S-VAR reads x̄ σx sx, centred over 1 2 3 as on the fx-50FH II',
+    cells.join(''), ' x̄    σx    sx  ');
+  m.press('N3');
+  check('S-VAR 3 types sx', m.view().line1, 'sx');
+  m.press('SHIFT'); m.press('N2'); m.press('N2');
+  check('S-VAR 2 types σx', m.view().line1, 'sxσx');
+}
+{
+  const m = new Machine();
+  m.mode = 'REG';
+  m.openRegVar(1);
+  check('REG VAR page 2 reads ȳ σy sy', m.view().line1, ' ȳ    σy    sy  ');
+  m.openSetup(4);
+  check('SETUP shows FreqOn and FreqOff in full', m.view().line1, 'FreqOn FreqOff  ');
+  m.openSetup(5);
+  check('SETUP shows Contrast in full', m.view().line1, 'Contrast        ');
+  m.openRegTypeMenu();
+  m.press('RIGHT');
+  check('TYPE page 2 shows AB-Exp in full', m.view().line1, 'Inv Quad AB-Exp ');
+
+  let whole = true;
+  const menus = [() => m.openModeMenu(), () => m.openClrMenu(), () => m.openDrgMenu(), () => m.openConstMenu(0),
+    () => m.openLogicMenu(0), () => m.openSVar(), () => m.openRegVar(0), () => m.openRegMinMax(0),
+    () => m.openRegTypeMenu(), () => m.openPCmd(0), ...[0, 1, 2, 3, 4, 5].map((p) => () => m.openSetup(p))];
+  for (const open of menus) {
+    open();
+    const spec = m.menu;
+    for (let page = 0; page < spec.pages.length; page++) {
+      spec.page = page;
+      const line = lcdTextCells(m.menuView().line1).join('');
+      for (const item of spec.pages[page].items) whole &&= line.includes(item.label);
+    }
+  }
+  check('no menu label is cut short', whole, true);
+}
+{
+  const old = parseProgramText('xσn◢xσn⁻¹◢xσn-1◢yσn◢yσn⁻¹◢', 'REG');
+  check('programs written with the first-edition names still read',
+    old.tokens.map((t) => t.id).join(' '), 'xsn pOut xsn1 pOut xsn1 pOut ysn pOut ysn1 pOut');
+  check('and are written back with the fx-50FH II names', formatProgramText(old.tokens), 'σx◢sx◢sx◢σy◢sy◢');
+}
+{
+  // guide example: newborn weight against days, REG FreqOff
+  const m = new Machine();
+  send(m, '[MODE]5 1 @[MODE][LEFT][LEFT]2');
+  for (const [x, y] of [[20, 3150], [50, 4800], [80, 6420], [110, 7310], [140, 7940], [170, 8690],
+    [200, 8800], [230, 9130], [260, 9270], [290, 9310], [320, 9390]]) send(m, `${x},${y}[MPLUS]`);
+  const read = (seq) => { send(m, '[AC]' + seq); return m.view().line2; };
+  check('guide linear a', read('@2 1[RIGHT][RIGHT]1='), '4446.575758');
+  check('guide linear b', read('@2 1[RIGHT][RIGHT]2='), '18.87575758');
+  check('guide linear r', read('@2 1[RIGHT][RIGHT]3='), '0.904793561');
+  send(m, '@2 3 2');
+  check('choosing a TYPE with data shows the first item, as the guide does', m.view().line1 + m.view().line2, 'x1=20');
+  check('guide log a', read('@2 1[RIGHT][RIGHT]1='), '-4209.356544');
+  check('guide log b', read('@2 1[RIGHT][RIGHT]2='), '2425.756228');
+  check('guide log r', read('@2 1[RIGHT][RIGHT]3='), '0.991493123');
+  check('guide log ŷ at 350', read('350@2 1[LEFT]2='), '10000.56129');
 }
 
 // ---- ON / power reset ------------------------------------------------------
