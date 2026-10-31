@@ -234,7 +234,7 @@ main {
 #help-toggle:hover, #studio-toggle:hover { opacity: 1; transform: translateY(-1px); }
 
 /* Program Studio — a warm, high-contrast workbench beside the machine. */
-#studio {
+#studio, #programs {
   --st-ink: #1d2521;
   --st-muted: #6d6a5f;
   --st-line: #e0d8c6;
@@ -245,7 +245,8 @@ main {
   --st-accent-soft: #e3efe8;
   --st-warn: #c0562f;
   --st-radius: 16px;
-
+}
+#studio {
   position: relative;
   flex: 0 1 640px;
   width: min(100%, 640px);
