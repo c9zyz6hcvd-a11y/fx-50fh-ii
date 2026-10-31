@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta name="description" content="A 1:1 working web recreation of the CASIO fx-50FH II (H.K.E.A.A. approved) programmable scientific calculator: all six modes, 23 built-in formulas, 40 scientific constants, base-n, statistics and the BASIC-like program mode.">
-<link rel="stylesheet" href="css/style.css?v=bank-v8">
+<link rel="stylesheet" href="css/style.css?v=bank-v9">
 </head>
 <body>
 
@@ -37,6 +37,18 @@
         <button id="help-toggle" type="button" aria-controls="help" aria-expanded="false">keyboard &amp; notes</button>
       </nav>
     </div>
+
+    <section id="programs" class="programs" hidden aria-labelledby="programs-title">
+      <div class="programs-sheet">
+        <header class="programs-head">
+          <h2 id="programs-title">Programs</h2>
+          <button id="programs-close" type="button" class="programs-close">Close</button>
+        </header>
+        <p class="programs-intro">Tap one to run it on the calculator.</p>
+        <ul id="program-list" class="program-list"></ul>
+        <button id="programs-edit" type="button" class="programs-edit">Edit or add your own programs</button>
+      </div>
+    </section>
 
     <section id="studio" hidden aria-labelledby="studio-title">
       <header class="studio-head">
@@ -126,7 +138,7 @@
           <div id="command-palette"></div>
         </div>
 
-        <p class="studio-footnote"><b>Banks:</b> each bank is one full calculator memory — 4 slots, 680 bytes — so it can be keyed into a real fx-50FH II. On the calculator, press <b>Prog</b>, then <b>◀ ▶</b> to change bank. <b>Recovery:</b> every edit is autosaved; use Export all now and then as a backup.</p>
+        <p class="studio-footnote"><b>Banks:</b> each bank is one full calculator memory — 4 slots, 680 bytes — so it can be keyed into a real fx-50FH II. On the calculator, press <b>MODE 6</b>, then EDIT, RUN or DEL, and <b>◀ ▶</b> to change bank. <b>Recovery:</b> every edit is autosaved; use Export all now and then as a backup.</p>
       </div>
 
       <section id="program-library-view" class="program-library" role="tabpanel" aria-labelledby="library-tab" hidden>
@@ -196,9 +208,10 @@
       <li><b>SHIFT 7</b> (CONST) → ten pages of four scientific constants.</li>
       <li><b>FMLA</b> → type a two-digit formula number 01–23, or scroll with
         ▼ ▲, then EXE. <b>SHIFT FMLA</b> (LOOK) shows the formula itself.</li>
-      <li><b>Prog</b> → run a stored program. In PRGM mode it opens
-        EDIT / RUN / DEL. On any program list, <b>◀ ▶</b> change bank; in EDIT,
-        ▶ past the last bank starts a new one.</li>
+      <li><b>Prog</b> → P1 P2 P3 P4 of the current bank; press 1–4 to run one.
+        In PRGM mode it opens EDIT / RUN / DEL, where <b>◀ ▶</b> change bank; in
+        EDIT, ▶ past the last bank starts a new one. On a phone, hold the solar
+        panel for a list of every program: one tap runs it.</li>
       <li><b>Program Studio</b> → write or paste normal program text, insert
         commands, see byte usage per bank, and run or continue editing with the calculator keys.
         Every bank and active draft is autosaved on this device. The <b>HKDSE Library</b>
@@ -230,6 +243,6 @@
   </section>
 </main>
 
-<script type="module" src="js/main.js?v=bank-v8"></script>
+<script type="module" src="js/main.js?v=bank-v9"></script>
 </body>
 </html>

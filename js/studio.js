@@ -5,7 +5,7 @@
 import { Program, PROGRAM_MEMORY, MAX_BANKS } from './program.js';
 import { bytesOf } from './tokens.js';
 import { formatProgramText, parseProgramText } from './program-codec.js';
-import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v8';
+import { PROGRAMS, PROGRAM_PACKS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v9';
 
 const STORAGE_KEY = 'fx50fhii.program-studio.v4';
 const LEGACY_STORAGE_KEYS = ['fx50fhii.program-studio.v3', 'fx50fhii.program-studio.v2'];
@@ -874,7 +874,9 @@ export function setupProgramStudio(machine, onMachineChange) {
   // First open: the whole library, in catalog order, a bank at a time. A new
   // bank starts when four slots or 680 bytes are used, so the numbering stays
   // P1–P4 in bank 1 and onwards.
-  function preloadLibrary() {
+  // The library in catalog order, a new bank whenever four areas or 680
+  // bytes are used: P1–P4, P5–P6, P7–P9, P10–P12.
+  function libraryGroups() {
     const groups = [];
     for (const program of PROGRAMS) {
       const group = groups[groups.length - 1];
@@ -882,10 +884,16 @@ export function setupProgramStudio(machine, onMachineChange) {
       if (!group || group.length === SLOT_COUNT || bytes + program.bytes > PROGRAM_MEMORY) groups.push([program]);
       else group.push(program);
     }
+    return groups;
+  }
+  const groupName = group => group.length > 1 ? `${group[0].id}–${group[group.length - 1].id}` : group[0].id;
+
+  function preloadLibrary() {
+    const groups = libraryGroups();
     try {
       machine.banks = groups.map(() => [null, null, null, null]);
       bankDrafts = groups.map(() => [null, null, null, null]);
-      bankNames = groups.map(group => group.length > 1 ? `${group[0].id}–${group[group.length - 1].id}` : group[0].id);
+      bankNames = groups.map(groupName);
       groups.forEach((group, bank) => {
         machine.bank = bank;
         group.forEach((program, slot) => {
@@ -1084,8 +1092,70 @@ export function setupProgramStudio(machine, onMachineChange) {
 
   window.addEventListener('pagehide', persist);
 
+  /**
+   * Run a library program from the Programs list. It runs from wherever an
+   * identical copy is stored; when there is none (cleared by CLR All, say) it
+   * goes back to its first-open bank and area if that area is free, else into
+   * a new bank, so nothing the student wrote is overwritten.
+   */
+  function runLibrary(id) {
+    const program = PROGRAM_BY_ID.get(id);
+    const parsed = program && parseProgramText(program.source, program.mode);
+    if (!parsed || parsed.errors.length) return 'This program could not be read.';
+    syncBanks();
+    const wanted = JSON.stringify({ mode: program.mode, tokens: parsed.tokenIds });
+    let place = null;
+    for (let bank = 0; bank < machine.banks.length && !place; bank++) {
+      const slot = machine.programSnapshot(bank).slots.findIndex(entry => JSON.stringify(entry) === wanted);
+      if (slot >= 0) place = { bank, slot };
+    }
+    if (!place) {
+      const groups = libraryGroups();
+      const bank = groups.findIndex(group => group.includes(program));
+      const slot = groups[bank].indexOf(program);
+      const free = bank < machine.banks.length
+        && !bankDrafts[bank]?.[slot]?.source.trim()
+        && !machine.programSnapshot(bank).slots[slot]?.tokens.length;
+      const atEnd = bank === machine.banks.length;
+      const fresh = freshBankIndex();
+      if (!free && !atEnd && fresh < 0) return banksFullMessage;
+      rememberUndo();
+      const tryPlace = (target, targetSlot) => {
+        machine.closePrograms();
+        machine.switchBank(target);
+        syncBanks();
+        try {
+          machine.setStudioProgram(targetSlot, program.mode, parsed.tokenIds);
+        } catch {
+          return false;   // the other areas of that bank leave too little memory
+        }
+        drafts[targetSlot] = { mode: program.mode, source: program.source };
+        if (!bankNames[target]) bankNames[target] = target === bank ? groupName(groups[bank]) : program.id;
+        place = { bank: target, slot: targetSlot };
+        return true;
+      };
+      if (!((free || atEnd) && tryPlace(bank, slot))) {
+        const target = freshBankIndex();
+        if (target < 0 || !tryPlace(target, 0)) { restoreState(undoState); return banksFullMessage; }
+      }
+      markSeen();
+      persist();
+    } else if (place.bank !== machine.bank) {
+      machine.closePrograms();
+      machine.switchBank(place.bank);
+      syncBanks();
+    }
+    machine.runStored(place.slot);
+    showSlot(place.slot);
+    persist();
+    onMachineChange();
+    if (currentView === 'library') renderLibrary();
+    return '';
+  }
+
   return {
     persist,
+    runLibrary,
     /** Store text typed a moment ago before a calculator key acts on it. */
     beforeKey() {
       if (!inputPending) return;

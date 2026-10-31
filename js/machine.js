@@ -1263,10 +1263,35 @@ export class Machine {
     this.screen = 'prog';
   }
 
+  // Outside PRGM, Prog lists the four areas of the current bank, P1 to P4,
+  // as the unit does; banks are switched on the PRGM mode pickers.
   openProgram() {
     if (this.mode === 'PRGM') { this.openProgramRoot(); return; }
-    this.prog = { stage: 'runpick' };
+    this.prog = { stage: 'progkey' };
     this.screen = 'prog';
+  }
+
+  /** Run a stored program at once, as if it were chosen with Prog. */
+  runStored(slot) {
+    if (!this.programs[slot]) return false;
+    this.closePrograms();
+    this.menu = null;
+    this.pending = null;
+    this.formula = null;
+    this.statBrowse = null;
+    this.error = null;
+    this.shift = false;
+    this.alpha = false;
+    this.clearEntry();
+    this.screen = 'prog';
+    try {
+      this.runProgram(slot);
+    } catch (e) {
+      if (e instanceof CalcError) this.raise(e.kind);
+      else if (e && e.mathError) this.raise('Math');
+      else throw e;
+    }
+    return true;
   }
 
   progKey(id, shift, alpha) {
@@ -1321,7 +1346,7 @@ export class Machine {
       return;
     }
 
-    if (p.stage === 'runpick') {
+    if (p.stage === 'runpick' || p.stage === 'progkey') {
       if (nkey === undefined) return;
       const prog = this.programs[nkey];
       if (!prog) return;
@@ -1794,7 +1819,13 @@ export class Machine {
     if (p.stage === 'editpick') {
       return { ...picker('EDIT', 'EDIT    Program'), line2: `P-${used} ${free.padStart(3, ' ')}` };
     }
-    if (p.stage === 'runpick') return { ...picker('RUN', 'RUN     Program'), line2: 'P-' + used };
+    if (p.stage === 'runpick') {
+      return { ...picker('RUN', 'RUN     Program'), line2: `P-${used} ${free.padStart(3, ' ')}` };
+    }
+    if (p.stage === 'progkey') {
+      const cells = ['1', ' ', ' ', '2', ' ', ' ', '3', ' ', ' ', '4'];
+      return { line1: ' P1  P2  P3  P4 ', line2: cells.join(''), line2Cells: cells };
+    }
     if (p.stage === 'delpick') {
       return { ...picker('DEL', 'DELETE  Program'), line2: `P-${used} ${free.padStart(3, ' ')}` };
     }

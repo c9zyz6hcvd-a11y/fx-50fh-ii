@@ -2,10 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v8';
-import { LCD, GLASS } from './lcd.js?v=bank-v8';
-import { Machine } from './machine.js?v=bank-v8';
-import { setupProgramStudio } from './studio.js?v=bank-v8';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v9';
+import { LCD, GLASS } from './lcd.js?v=bank-v9';
+import { Machine } from './machine.js?v=bank-v9';
+import { setupProgramStudio } from './studio.js?v=bank-v9';
+import { PROGRAMS } from './program-catalog.generated.js?v=bank-v9';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -192,11 +193,41 @@ helpToggle.addEventListener('click', async () => {
 
 window.fx = machine;   // handy for poking at state from the console
 
-// ---- Program Studio from the faceplate ----------------------------------------
+// ---- Programs list from the faceplate ----------------------------------------
 // On a phone the page is the calculator alone. Holding the faceplate above the
-// display (brand and solar panel) for 0.6 s opens Program Studio.
+// display (brand and solar panel) for 0.6 s lists the library programs; one
+// tap runs a program on the calculator. Program Studio sits behind a link.
 const studioPanel = document.getElementById('studio');
 const studioToggle = document.getElementById('studio-toggle');
+const programsPanel = document.getElementById('programs');
+const programList = document.getElementById('program-list');
+for (const program of PROGRAMS) {
+  const item = document.createElement('li');
+  const button = document.createElement('button');
+  button.type = 'button';
+  for (const [cls, text] of [['program-id', program.id], ['program-name', program.title], ['program-mode', program.mode]]) {
+    const span = document.createElement('span');
+    span.className = cls;
+    span.textContent = text;
+    button.append(span);
+  }
+  button.addEventListener('click', () => {
+    programsPanel.hidden = true;
+    const problem = studioController.runLibrary(program.id);
+    if (problem) showHint(problem, false);
+    blink = true;
+    lastBlink = performance.now();
+    dirty = true;
+  });
+  item.append(button);
+  programList.append(item);
+}
+document.getElementById('programs-close').addEventListener('click', () => { programsPanel.hidden = true; });
+document.getElementById('programs-edit').addEventListener('click', () => {
+  programsPanel.hidden = true;
+  if (studioPanel.hidden) studioToggle.click();
+});
+programsPanel.addEventListener('click', (e) => { if (e.target === programsPanel) programsPanel.hidden = true; });
 const phone = matchMedia('(max-width: 520px)');
 let holdTimer = 0;
 let holdStart = null;
@@ -209,7 +240,7 @@ shell.addEventListener('pointerdown', (e) => {
   holdStart = { x: e.clientX, y: e.clientY };
   holdTimer = setTimeout(() => {
     holdStart = null;
-    if (studioPanel.hidden) studioToggle.click();
+    if (studioPanel.hidden) programsPanel.hidden = false;
   }, 600);
 });
 window.addEventListener('pointerup', cancelHold);
@@ -218,11 +249,11 @@ shell.addEventListener('pointermove', (e) => {
   if (holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 12) cancelHold();
 });
 
-// Say once, on a phone, where Program Studio went.
+// Say once, on a phone, where the programs are.
 try {
-  if (phone.matches && !localStorage.getItem('fx50fhii.hint.studio')) {
-    localStorage.setItem('fx50fhii.hint.studio', '1');
-    setTimeout(() => showHint('Hold the solar panel to open Program Studio.', false), 800);
+  if (phone.matches && !localStorage.getItem('fx50fhii.hint.programs')) {
+    localStorage.setItem('fx50fhii.hint.programs', '1');
+    setTimeout(() => showHint('Hold the solar panel to choose a program.', false), 800);
   }
 } catch {
   // Blocked storage only means the hint may show again.

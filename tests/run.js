@@ -1240,10 +1240,16 @@ for (const [key, mode, secondPage] of [
   send(m, '11' + '@3' + '1' + '@[RCL]#[NEG]' + '=' + '#[NEG]*3' + '[AC]');
   check('banks: two banks exist', m.banks.length, 2);
   send(m, '[MODE]1[PROG]');
-  check('banks: RUN names the current bank', m.view().line1, 'RUN     Bank 2/2');
+  check('Prog shows P1 P2 P3 P4 as on the unit, banks or not',
+    m.view().line1 + '|' + m.view().line2, ' P1  P2  P3  P4 |1  2  3  4');
+  send(m, '[RIGHT]');
+  check('Prog does not switch banks', m.bank, 1);
   send(m, '1' + '10=');
   check('banks: bank 2 P1 runs its own program', shown(m), '30');
-  send(m, '[PROG][RIGHT]1' + '10=');
+  send(m, '[MODE]6 2');
+  check('banks: RUN names the current bank', m.view().line1, 'RUN     Bank 2/2');
+  check('RUN shows the areas in use and the free bytes', /^P-1--- +\d+$/.test(m.view().line2), true);
+  send(m, '[RIGHT]1' + '10=');
   check('banks: ▶ wraps to bank 1 P1', shown(m), '25.4');
   check('banks: each bank keeps its own 680 bytes', m.programBytes() < 680, true);
 }
@@ -1330,11 +1336,22 @@ for (const [key, mode, secondPage] of [
 {
   const m = new Machine();
   for (let i = 0; i < 120; i++) { m.switchBank(i); m.setStudioProgram(0, 'COMP', ['1']); }
-  send(m, '[PROG]');
+  send(m, '[MODE]6 2');
   check('banks: three-digit bank numbers fit the 16-cell line', m.view().line1, 'RUN     Bank 120');
   m.switchBank(m.banks.length);
   for (let i = m.banks.length; i <= 300; i++) m.switchBank(i);
   check('banks: the number of banks is capped', m.banks.length <= 200, true);
+}
+{
+  // the Programs list runs a stored program straight away, from any screen
+  const m = new Machine();
+  m.setStudioProgram(2, 'COMP', parseProgramText('?→A:A×2.54', 'COMP').tokenIds);
+  send(m, '[MODE]2 @9');
+  check('runStored refuses an empty area', m.runStored(0), false);
+  check('runStored runs from an open menu', m.runStored(2) && m.view().line1, 'A?');
+  send(m, '10=');
+  check('runStored program finishes with its answer', shown(m), '25.4');
+  check('runStored returns to the mode it came from', m.mode, 'CMPLX');
 }
 
 {
