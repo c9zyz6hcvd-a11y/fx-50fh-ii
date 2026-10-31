@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v13';
-import { LCD, GLASS } from './lcd.js?v=bank-v13';
-import { Machine } from './machine.js?v=bank-v13';
-import { parseProgramText } from './program-codec.js?v=bank-v13';
-import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v13';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v14';
+import { LCD, GLASS } from './lcd.js?v=bank-v14';
+import { Machine } from './machine.js?v=bank-v14';
+import { parseProgramText } from './program-codec.js?v=bank-v14';
+import { PROGRAMS, PROGRAM_BY_ID } from './program-catalog.generated.js?v=bank-v14';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -268,7 +268,7 @@ function renderPrograms() {
 
 function startDrag(e, item, handle) {
   e.preventDefault();
-  handle.setPointerCapture(e.pointerId);
+  try { handle.setPointerCapture(e.pointerId); } catch { /* still works without capture */ }
   const rows = [...programList.children];
   const from = rows.indexOf(item);
   const mids = rows.map((row) => { const r = row.getBoundingClientRect(); return r.top + r.height / 2; });
@@ -287,11 +287,12 @@ function startDrag(e, item, handle) {
       row.style.transform = shift ? `translateY(${shift}px)` : '';
     });
   };
-  const end = () => {
+  // A drag the phone cancels (an edge swipe, a call) is undone, not saved.
+  const end = (ev) => {
     handle.removeEventListener('pointermove', move);
     handle.removeEventListener('pointerup', end);
     handle.removeEventListener('pointercancel', end);
-    if (to !== from) {
+    if (ev.type === 'pointerup' && to !== from) {
       const [id] = order.splice(from, 1);
       order.splice(to, 0, id);
       try { localStorage.setItem(ORDER_KEY, JSON.stringify(order)); } catch { /* kept for this visit only */ }
