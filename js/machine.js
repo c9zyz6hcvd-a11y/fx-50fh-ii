@@ -34,8 +34,8 @@ export class Machine {
     // areas sharing 680 bytes), so anything in a bank can be keyed into the
     // real unit. `programs` always means the current bank.
     this.banks = [[null, null, null, null]];
-    // The ranked program list behind Prog, [{ mode, tokens: [ids] }]: G1 is
-    // ranks 1-4, G2 ranks 5-8, and so on. Empty means Prog lists P1-P4.
+    // The ranked program list behind Prog, [{ mode, tokens: [ids] }]: group 1
+    // is ranks 1-4, group 2 ranks 5-8, and so on. Empty means the unit's P1-P4.
     this.library = [];
     // Counts SHIFT 9 3 presses; the page answers each with a surprise.
     this.prank = 0;

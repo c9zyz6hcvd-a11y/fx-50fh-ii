@@ -230,7 +230,7 @@ window.fx = machine;   // handy for poking at state from the console
 // On a phone the page is the calculator alone: holding the faceplate above the
 // display (brand and solar panel) for 0.6 s opens the list. A tap runs a
 // program; dragging its handle ranks it, and the rank sets where Prog finds
-// it (G1 P1 is the top program).
+// it (group 1, P1 is the top program).
 const programsPanel = document.getElementById('programs');
 const programList = document.getElementById('program-list');
 const redraw = () => { blink = true; lastBlink = performance.now(); dirty = true; };
