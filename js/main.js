@@ -2,11 +2,11 @@
 // hotspot per real key, a canvas laid exactly over the glass, and the physical
 // keyboard mapped onto the same key ids.
 
-import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v10';
-import { LCD, GLASS } from './lcd.js?v=bank-v10';
-import { Machine } from './machine.js?v=bank-v10';
-import { setupProgramStudio } from './studio.js?v=bank-v10';
-import { PROGRAMS } from './program-catalog.generated.js?v=bank-v10';
+import { KEYS, SHELL_W, SHELL_H, PC_KEYS } from './keymap.js?v=bank-v11';
+import { LCD, GLASS } from './lcd.js?v=bank-v11';
+import { Machine } from './machine.js?v=bank-v11';
+import { setupProgramStudio } from './studio.js?v=bank-v11';
+import { PROGRAMS } from './program-catalog.generated.js?v=bank-v11';
 
 const shell = document.getElementById('shell');
 const canvas = document.getElementById('lcd');
@@ -213,6 +213,7 @@ for (const program of PROGRAMS) {
   }
   button.addEventListener('click', () => {
     programsPanel.hidden = true;
+    studioController.syncFromMachine();
     const problem = studioController.runLibrary(program.id);
     if (problem) showHint(problem, false);
     blink = true;
