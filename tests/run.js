@@ -151,6 +151,34 @@ function runCatalogProgramWithKeys(id, inputSequences) {
   return outputs;
 }
 
+/** Run a program on the keys; return each pause and the last answer shown, as numbers. */
+function runCatalogProgramShown(id, inputSequences) {
+  const spec = PROGRAM_BY_ID.get(id);
+  const parsed = parseProgramText(spec.source, spec.mode);
+  const machine = new Machine();
+  machine.mode = spec.mode;
+  machine.setStudioProgram(0, spec.mode, parsed.tokenIds);
+  machine.runProgram(0);
+  const outputs = [];
+  let inputIndex = 0;
+  let guard = 0;
+  while (machine.prog && guard++ < 10000) {
+    const state = machine.prog.state;
+    if (machine.error) throw new Error(`${id} showed ${machine.error} ERROR`);
+    if (state.kind === 'input') {
+      if (inputIndex >= inputSequences.length) throw new Error(`${id} asked for unexpected input ${state.varName}`);
+      send(machine, `${inputSequences[inputIndex++]}=`);
+    } else if (state.kind === 'output') {
+      outputs.push(state.value.re);
+      send(machine, '=');
+    }
+  }
+  if (machine.error) throw new Error(`${id} showed ${machine.error} ERROR`);
+  if (inputIndex !== inputSequences.length) throw new Error(`${id} used ${inputIndex}/${inputSequences.length} key inputs`);
+  outputs.push(Number(shown(machine)));
+  return outputs;
+}
+
 /** Run a key sequence on a fresh machine (or the supplied one) and read line 2. */
 function shown(m) {
   const v = m.view();
@@ -902,6 +930,65 @@ for (const [no, inputs, want] of FORMULA_CASES) {
   t(`formula ${no} catalogue path`, `[FMLA]${no}=${inputs}`, want);
 }
 
+// Values typed as a student types them: − for a negative, √, brackets and
+// sums. Each answer is worked out here from the textbook formula, not from
+// formulas.js. A null answer means Math ERROR.
+{
+  const rad = (d) => d * Math.PI / 180;
+  const g = 9.80665, k = 1 / (4 * Math.PI * 8.854187817e-12);
+  const FORMULA_KEY_CASES = [
+    ['01', '1=-5=6=', 3, 2],
+    ['01', '-1=5=-6=', 2, 3],
+    ['01', '1=2=-15=', 3, -5],
+    ['01', '1=-2=1=', 1, 1],
+    ['01', '1=0=-4=', 2, -2],
+    ['01', '2=[SQRT]9)=1=', -0.5, -1],
+    ['01', '(1)=2-7=3*2=', 3, 2],
+    ['01', '4=-12=9=', 1.5, 1.5],
+    ['01', '1=1=1=', null],
+    ['01', '0=2=1=', null],
+    ['02', '5=5=60=', 5],
+    ['02', '3=4=120=', Math.sqrt(9 + 16 + 12)],
+    ['03', '3=4=5=', 6],
+    ['03', '1=1=3=', null],
+    // 04 and 05 use the machine's own estimate, good to about 1e-7.
+    ['04', '1.5=', 0.933192799, undefined, 1e-7],
+    ['05', '1=', 0.341344746, undefined, 1e-7],
+    ['06', '-1=2=0.5=', -2 * k / 0.25],
+    ['07', '2=6=3=', 4],
+    ['08', '2=3=4=-30=', -12],
+    ['09', '-10=2=5=10=', -10 * Math.exp(-1)],
+    ['10', '10=1=', -20],
+    ['11', '10=50=0.1=1-0.9999=', Math.sqrt(100 + (2 * Math.PI * 50 * 0.1 - 1 / (2 * Math.PI * 50 * 1e-4)) ** 2)],
+    ['12', '10=50=0.1=1-0.9999=', 1 / Math.sqrt(0.01 + (2 * Math.PI * 50 * 1e-4 - 1 / (2 * Math.PI * 50 * 0.1)) ** 2)],
+    ['13', '0.5=2=', 1 / (2 * Math.PI)],
+    ['14', '-2=3=', -6 + g * 4.5],
+    ['15', '4=', 2 * Math.PI * Math.sqrt(4 / g)],
+    ['16', '4=1=', 4 * Math.PI],
+    ['17', '100=340=-10=0=', 100 * 350 / 340],
+    ['18', '2=300=0.5=', 2 * 8.314472 * 300 / 0.5],
+    ['19', '3=4=2=', 24],
+    ['20', '200=0.1=', 1],
+    ['21', '2=1=1000=2000=', 2 + 2 + g],
+    ['22', '100=1=2=45=', 100 + Math.sin(rad(45))],
+    ['23', '100=1=2=45=', 100 + Math.cos(rad(45))]
+  ];
+  for (const [no, inputs, want, second, eps = 1e-8] of FORMULA_KEY_CASES) {
+    const name = `formula ${no} typed ${inputs}`;
+    const m = new Machine();
+    try { send(m, `[FMLA]${no}=${inputs}`); } catch (e) {
+      fail++; failures.push(`${name}\n    threw ${e.stack}`); continue;
+    }
+    if (want === null) { check(name + ' gives Math ERROR', m.view().line1, 'Math ERROR'); continue; }
+    check(name + ' shows a result', m.error, null);
+    near(name, m.ans.re, want, eps);
+    if (second !== undefined) {
+      send(m, '[DOWN]');
+      near(name + ' second root', Number(shown(m)), second, 1e-8);
+    }
+  }
+}
+
 // ---- scientific constants ---------------------------------------------------
 const R = (n) => '[RIGHT]'.repeat(n);
 t('speed of light', '@7' + R(6) + '4=', '299792458');
@@ -1077,6 +1164,39 @@ for (let i = 0; i < CONSTANTS.length; i++) {
   check('P1 raises Math ERROR when the roots are not real', p1Error, 'Math');
   nearMany('program library: P1 accepts a negative coefficient through the keyboard',
     runCatalogProgramWithKeys('P1', ['1', '2', '[NEG]15']), [-1, -16, 3], 1e-8);
+
+  // Every program, typed on the keys: each pause and the last answer, with
+  // negatives entered once with (−) and once with the − key.
+  const KEY_CASES = [
+    ['P1', [1, 2, -15], [-1, -16, 3, -5]],
+    ['P1', [1, -5, 6], [2.5, -0.25, 3, 2]],
+    ['P2', [1, 1, 1, 2, -1, 5], [2, -1]],
+    ['P2', [2, 3, 12, 1, -1, 1], [3, 2]],
+    ['P3', [1, 6, 11, 6], [-1, -2, -3, -3]],
+    ['P3', [1, -6, 11, -6], [3, 2, 1, 1]],
+    ['P4', [4, -8, 3], [-2, 4, Math.sqrt(17)]],
+    ['P4', [-6, 2, -15], [3, -1, 5]],
+    ['P5', [1, 7, 40, -2, -4, -20], [5, 5, -2, 6, 6]],
+    ['P6', [5, 2, 2, 3, 6, -5], [2, -2, 5, -4, 4, -17]],
+    ['P7', [0, 0, 24, 0, 12, 9], [12, 3, 12, 4, 12, 16, 12, -3.5, -3.5]],
+    ['P8', [1, 1, 2, 1, -1, 1], [1.5, 0.5]],
+    ['P9', [1, 7, 40, -2, -4, -20], [5, 5, -2, 6, 6]],
+    ['P10', [1, 0, 0, 0, 2, 3], [-1, 1, 3, 9, 9]],
+    ['P11', [1, -4, -6, 9, -10, -6, 25], [8 / 3, 1.114381917, 8 / 3, 4.885618083, 4.885618083]],
+    ['P12', [1, 1, 1, 1, 2, -1, 5], [2, -1]],
+    ['P12', [2, 1, 7, -40, -2, -4, -20], [-2, 6, 5, 5, 5]]
+  ];
+  for (const [id, inputs, want] of KEY_CASES) {
+    for (const neg of ['[NEG]', '-']) {
+      const keys = inputs.map((x) => String(x).replace(/^-/, neg));
+      const name = `program library: ${id} typed ${keys.join(' ')}`;
+      try {
+        nearMany(name, runCatalogProgramShown(id, keys), want, 1e-8);
+      } catch (e) {
+        fail++; failures.push(`${name}\n    threw ${e.message}`);
+      }
+    }
+  }
 }
 {
   // The complex solver accepts a+bi at every prompt and returns complex roots.

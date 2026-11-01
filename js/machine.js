@@ -1154,7 +1154,7 @@ export class Machine {
     }
   }
 
-  formulaKey(id, shift) {
+  formulaKey(id, shift, alpha) {
     const f = this.formula;
     if (id === 'AC' || (shift && id === 'PROG')) { this.formula = null; this.clearEntry(); return; }
     if (shift && id === 'FMLA') return this.formulaLook();
@@ -1199,8 +1199,11 @@ export class Machine {
         if (f.varIdx >= spec.vars.length) this.formulaRun();
         return;
       }
-      const t = this.tokenFor(id, shift, false);
-      if (t && (t.k === K.DIGIT || t.k === K.PRE || t.k === K.CONST || t.k === K.INFIX)) f.edit.push(t);
+      // A value is typed as at a program's ? prompt: any expression, and a
+      // leading − is a negative sign.
+      let t = this.tokenFor(id, shift, alpha);
+      if (t) t = this.signedToken(t, f.edit[f.edit.length - 1]);
+      if (t && t.k !== K.PROG && t.k !== K.CONV && bytesOf(f.edit) + (t.b || 1) <= INPUT_BYTES) f.edit.push(t);
       return;
     }
 
